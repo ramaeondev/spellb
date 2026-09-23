@@ -1,0 +1,4 @@
+- [ ] Build the warm-paper Spelling Quest home and stage selection
+- [ ] Add and validate 500 unique words across five exact-length stages
+- [ ] Implement image, speech, input, attempt, feedback, scoring, and completion flows
+- [ ] Verify the preview and central reveal rule
