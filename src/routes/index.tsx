@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 });
 
 const stageColors = ["bg-sun/25", "bg-sky/25", "bg-coral/20", "bg-sky/25", "bg-coral/20"];
-const stageExamples = ["Sun, cat, cup, hat, pen…", "Duck, lion, mango, chair…", "Pencil, rabbit, carrot, piano…", "Guitar, mirror, tomato, bicycle…", "Strawberry, umbrella, trumpet, pumpkin…"];
+const stageExamples = ["Sun, cat, cup, hat, pen…", "Duck, pear, lamp, bike, moon…", "Robin, apple, chair, piano, tiger…", "Rabbit, banana, mirror, planet…", "Giraffe, pumpkin, library, bicycle…"];
 
 function shuffle<T>(items: T[]) {
   const copy = [...items];
@@ -158,8 +158,8 @@ function SpellingQuest() {
             <p className="font-display text-xl font-extrabold leading-none">Stage {stage}</p>
             <p className="mt-1 text-sm font-bold text-ink/55">Word {progress} of 100</p>
           </div>
-          <div className="flex gap-1 text-lg text-sun" aria-label={`${earnedStars} stars earned`}>
-            <span aria-hidden="true">★</span><span aria-hidden="true">★</span><span aria-hidden="true">★</span>
+          <div className="flex items-center gap-1.5 text-sun" aria-label={`${earnedStars} stars earned`}>
+            <span aria-hidden="true" className="text-lg">★</span><span className="text-sm font-extrabold text-ink">{earnedStars}</span>
           </div>
         </div>
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-paper ring-1 ring-ink/5" aria-label={`${progress} of 100 words completed`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
@@ -198,5 +198,5 @@ function StageSelect({ onSelect }: { onSelect: (stage: WordStage) => void }) {
 }
 
 function Completion({ stage, stars, onPlayAgain, onNext, onHome }: { stage: WordStage; stars: number; onPlayAgain: () => void; onNext: () => void; onHome: () => void }) {
-  return <main className="quest-surface flex min-h-screen items-center justify-center overflow-hidden px-5 py-12 text-ink"><section className="quest-rise w-full max-w-lg rounded-[32px] bg-cream p-8 text-center shadow-[0_18px_0_color-mix(in_oklab,var(--color-ink)_8%,transparent)] ring-1 ring-ink/5"><div className="text-5xl" aria-hidden="true">🎉</div><h1 className="mt-3 font-display text-4xl font-extrabold text-coral sm:text-5xl">STAGE COMPLETE!</h1><p className="mt-2 font-display text-2xl font-bold text-ink/60">100 / 100</p><div className="mt-5 flex justify-center gap-1 text-4xl text-sun" aria-label={`${stars} stars earned`}>{[0,1,2,3,4].map((index) => <span key={index} aria-hidden="true">{index < Math.round(stars / 100) ? "★" : "☆"}</span>)}</div><p className="mt-4 text-lg font-bold text-ink/70">Great spelling practice!</p><p className="mt-1 text-sm font-semibold text-ink/50">You earned {stars} stars in Stage {stage}.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center"><Button type="button" onClick={onPlayAgain} className="rounded-full bg-sky px-7 py-3.5 font-bold text-cream hover:bg-sky/90">Play Again</Button>{stage < 5 ? <Button type="button" onClick={onNext} className="rounded-full bg-coral px-7 py-3.5 font-bold text-cream hover:bg-coral/90">Next Stage <ArrowRight aria-hidden="true" className="size-4" /></Button> : <Button type="button" onClick={onHome} className="rounded-full bg-ink px-7 py-3.5 font-bold text-cream hover:bg-ink/90">Back to Stages</Button>}</div></section></main>;
+  return <main className="quest-surface flex min-h-screen items-center justify-center overflow-hidden px-5 py-12 text-ink"><section className="quest-rise w-full max-w-lg rounded-[32px] bg-cream p-8 text-center shadow-[0_18px_0_color-mix(in_oklab,var(--color-ink)_8%,transparent)] ring-1 ring-ink/5"><div className="text-5xl" aria-hidden="true">🎉</div><h1 className="mt-3 font-display text-4xl font-extrabold text-coral sm:text-5xl">STAGE COMPLETE!</h1><p className="mt-2 font-display text-2xl font-bold text-ink/60">100 / 100</p><div className="mt-5 flex justify-center gap-1 text-4xl text-sun" aria-label={`${stars} of 300 stars earned`}>{[0,1,2,3,4].map((index) => <span key={index} aria-hidden="true">{index < Math.round(stars / 60) ? "★" : "☆"}</span>)}</div><p className="mt-4 text-lg font-bold text-ink/70">Great spelling practice!</p><p className="mt-1 text-sm font-semibold text-ink/50">You earned {stars} of 300 stars in Stage {stage}.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center"><Button type="button" onClick={onPlayAgain} className="rounded-full bg-sky px-7 py-3.5 font-bold text-cream hover:bg-sky/90">Play Again</Button>{stage < 5 ? <Button type="button" onClick={onNext} className="rounded-full bg-coral px-7 py-3.5 font-bold text-cream hover:bg-coral/90">Next Stage <ArrowRight aria-hidden="true" className="size-4" /></Button> : <Button type="button" onClick={onHome} className="rounded-full bg-ink px-7 py-3.5 font-bold text-cream hover:bg-ink/90">Back to Stages</Button>}</div></section></main>;
 }
