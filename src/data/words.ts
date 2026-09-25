@@ -452,7 +452,7 @@ export const WORDS: WordEntry[] = [
   { id: 'evening', word: 'evening', stage: 5, category: 'everyday', image: '/words/evening.svg' },
   { id: 'thunder', word: 'thunder', stage: 5, category: 'everyday', image: '/words/thunder.svg' },
   { id: 'snowman', word: 'snowman', stage: 5, category: 'everyday', image: '/words/snowman.svg' },
-  { id: 'seahors', word: 'seahors', stage: 5, category: 'everyday', image: '/words/seahors.svg' },
+  { id: 'seagull', word: 'seagull', stage: 5, category: 'everyday', image: '/words/seagull.svg' },
   { id: 'octopus', word: 'octopus', stage: 5, category: 'everyday', image: '/words/octopus.svg' },
   { id: 'sunbeam', word: 'sunbeam', stage: 5, category: 'everyday', image: '/words/sunbeam.svg' },
   { id: 'starlit', word: 'starlit', stage: 5, category: 'everyday', image: '/words/starlit.svg' },
