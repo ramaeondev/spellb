@@ -1,4 +1,4 @@
-export type WordStage = 1 | 2 | 3 | 4 | 5;
+export type WordStage = 1 | 2 | 3 | 4 | 5 | 7;
 export type WordEntry = { id: string; word: string; stage: WordStage; category: string; image: string; };
 
 export const WORDS: WordEntry[] = [
