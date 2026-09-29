@@ -133,14 +133,16 @@ function SpellingQuest() {
       setLastStars(stars);
       setEarnedStars((score) => score + stars);
       setFeedback("correct");
-      speakWord(current.word);
+      recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
+      speakWord(current.word, voice);
       window.setTimeout(advance, 1100);
       return;
     }
     const nextAttempts = attempts + 1;
     setAttempts(nextAttempts);
     setFeedback(nextAttempts >= 3 ? "revealed" : "wrong");
-    speakWord(current.word);
+    recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
+    speakWord(current.word, voice);
     if (nextAttempts >= 3) {
       setLastStars(0);
       window.setTimeout(advance, 1600);
@@ -156,6 +158,14 @@ function SpellingQuest() {
       return;
     }
     setPosition((value) => value + 1);
+  }
+
+  function skipWord() {
+    if (!current || feedback !== "idle") return;
+    recordValidationEvent(validationSessionId.current ?? "", current.id, "skipped");
+    window.speechSynthesis?.cancel();
+    setFeedback("skipped");
+    window.setTimeout(advance, 500);
   }
 
   if (!stage) return <StageSelect onSelect={startStage} />;
