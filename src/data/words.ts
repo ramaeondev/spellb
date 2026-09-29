@@ -504,7 +504,14 @@ export const WORDS: WordEntry[] = [
   { id: 'orchard', word: 'orchard', stage: 5, category: 'nature', image: '/words/orchard.svg' },
 ];
 
-export const STAGE_WORDS = Object.fromEntries(([1, 2, 3, 4, 5] as WordStage[]).map((stage) => [stage, WORDS.filter((entry) => entry.stage === stage)])) as Record<WordStage, WordEntry[]>;
+export const STAGE_WORDS = {
+  1: WORDS.filter((entry) => entry.stage === 1),
+  2: WORDS.filter((entry) => entry.stage === 2),
+  3: WORDS.filter((entry) => entry.stage === 3),
+  4: WORDS.filter((entry) => entry.stage === 4),
+  5: WORDS.filter((entry) => entry.stage === 5),
+  7: WORDS,
+} satisfies Record<WordStage, WordEntry[]>;
 
 export function validateWordBank() {
   const all = WORDS.map((entry) => entry.word);
