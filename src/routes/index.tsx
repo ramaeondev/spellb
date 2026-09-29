@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
-import { speakWord } from "@/lib/speech";
+import { VOICE_OPTIONS, speakWord, type VoiceChoice } from "@/lib/speech";
+import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
-type Feedback = "idle" | "wrong" | "correct" | "revealed";
+type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,8 +22,8 @@ export const Route = createFileRoute("/")({
   component: SpellingQuest,
 });
 
-const stageColors = ["bg-sun/25", "bg-sky/25", "bg-coral/20", "bg-sky/25", "bg-coral/20"];
-const stageDescriptions = ["Start with the little words.", "A few more letters to explore.", "Ready for a bigger challenge?", "Keep your spelling streak going.", "Take on the longest words!"];
+const stageColors = ["bg-sun/25", "bg-sky/25", "bg-coral/20", "bg-sky/25", "bg-coral/20", "bg-ink/10"];
+const stageDescriptions = ["Start with the little words.", "A few more letters to explore.", "Ready for a bigger challenge?", "Keep your spelling streak going.", "Take on the longest words!", "A surprise word from the whole quest!"];
 
 function shuffle<T>(items: T[]) {
   const copy = [...items];
@@ -49,6 +50,8 @@ function SpellingQuest() {
   const [lastStars, setLastStars] = useState(0);
   const [finished, setFinished] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [voice, setVoice] = useState<VoiceChoice>("default");
+  const validationSessionId = useRef<string | undefined>(undefined);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const current = session[position];
@@ -66,20 +69,26 @@ function SpellingQuest() {
     setImageFailed(false);
     const timer = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
-      speakWord(current.word);
+      speakWord(current.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
-  }, [current, finished]);
+  }, [current, finished, voice]);
 
   const totalStars = useMemo(() => "★".repeat(Math.min(3, lastStars)) + "☆".repeat(3 - Math.min(3, lastStars)), [lastStars]);
 
   function startStage(nextStage: WordStage) {
     setStage(nextStage);
-    setSession(shuffle(STAGE_WORDS[nextStage]));
+    const words = nextStage === 7
+      ? [STAGE_WORDS[7][Math.floor(Math.random() * STAGE_WORDS[7].length)]].filter((entry): entry is WordEntry => Boolean(entry))
+      : shuffle(STAGE_WORDS[nextStage]);
+    setSession(words);
     setPosition(0);
     setEarnedStars(0);
     setLastStars(0);
     setFinished(false);
+    void startValidationSession(String(nextStage)).then((sessionInfo) => {
+      validationSessionId.current = sessionInfo.sessionId;
+    });
   }
 
   function goHome() {
@@ -124,14 +133,16 @@ function SpellingQuest() {
       setLastStars(stars);
       setEarnedStars((score) => score + stars);
       setFeedback("correct");
-      speakWord(current.word);
+      recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
+      speakWord(current.word, voice);
       window.setTimeout(advance, 1100);
       return;
     }
     const nextAttempts = attempts + 1;
     setAttempts(nextAttempts);
     setFeedback(nextAttempts >= 3 ? "revealed" : "wrong");
-    speakWord(current.word);
+    recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
+    speakWord(current.word, voice);
     if (nextAttempts >= 3) {
       setLastStars(0);
       window.setTimeout(advance, 1600);
@@ -149,6 +160,14 @@ function SpellingQuest() {
     setPosition((value) => value + 1);
   }
 
+  function skipWord() {
+    if (!current || feedback !== "idle") return;
+    recordValidationEvent(validationSessionId.current ?? "", current.id, "skipped");
+    window.speechSynthesis?.cancel();
+    setFeedback("skipped");
+    window.setTimeout(advance, 500);
+  }
+
   if (!stage) return <StageSelect onSelect={startStage} />;
   if (finished) return <Completion stage={stage} stars={earnedStars} onPlayAgain={() => startStage(stage)} onNext={() => stage < 5 ? startStage((stage + 1) as WordStage) : goHome()} onHome={goHome} />;
   if (!current) return <StageSelect onSelect={startStage} />;
@@ -162,14 +181,14 @@ function SpellingQuest() {
           </Button>
           <div className="text-center">
             <p className="font-display text-xl font-extrabold leading-none">Stage {stage}</p>
-            <p className="mt-1 text-sm font-bold text-ink/55">Word {progress} of 100</p>
+           <p className="mt-1 text-sm font-bold text-ink/55">Word {progress} of {stage === 7 ? 1 : 100}</p>
           </div>
           <div className="flex items-center gap-1.5 text-sun" aria-label={`${earnedStars} stars earned`}>
             <span aria-hidden="true" className="text-lg">★</span><span className="text-sm font-extrabold text-ink">{earnedStars}</span>
           </div>
         </div>
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-paper ring-1 ring-ink/5" aria-label={`${progress} of 100 words completed`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-          <div className="h-full rounded-full bg-gradient-to-r from-sky to-coral transition-all duration-500" style={{ width: `${progress}%` }} />
+         <div className="mt-5 h-3 overflow-hidden rounded-full bg-paper ring-1 ring-ink/5" aria-label={`${progress} of ${stage === 7 ? 1 : 100} words completed`} role="progressbar" aria-valuemin={0} aria-valuemax={stage === 7 ? 1 : 100} aria-valuenow={progress}>
+           <div className="h-full rounded-full bg-gradient-to-r from-sky to-coral transition-all duration-500" style={{ width: `${(progress / (stage === 7 ? 1 : 100)) * 100}%` }} />
         </div>
         <div className="mt-7 grid place-items-center">
           <div className="relative aspect-[4/3] w-full max-w-md overflow-hidden rounded-[24px] bg-paper ring-1 ring-ink/5">
@@ -177,19 +196,32 @@ function SpellingQuest() {
           </div>
         </div>
         <div className="mt-5 flex justify-center">
-          <Button type="button" onClick={() => current && speakWord(current.word)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
+           <Button type="button" onClick={() => current && speakWord(current.word, voice)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
             <Volume2 aria-hidden="true" className="size-5" /> Hear Again
           </Button>
         </div>
+         <div className="mx-auto mt-4 flex max-w-md flex-col gap-2 text-left">
+           <label htmlFor="voice-choice" className="text-xs font-extrabold uppercase tracking-[0.12em] text-ink/50">Listening voice</label>
+           <select id="voice-choice" value={voice} onChange={(event) => setVoice(event.target.value as VoiceChoice)} className="rounded-2xl bg-paper px-4 py-3 font-bold text-ink outline-none ring-1 ring-ink/10 focus:ring-4 focus:ring-sky">
+             {VOICE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+           </select>
+           <p className="text-xs font-semibold text-ink/45">Indian voices appear when your device provides them.</p>
+         </div>
         <div className="mt-7 flex flex-wrap justify-center gap-2.5 sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
           {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className="size-14 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 ring-sky/70 transition focus:ring-4 focus:ring-sky sm:size-16" />)}
         </div>
+         <div className="mt-5 flex justify-center">
+           <Button type="button" variant="ghost" onClick={skipWord} className="rounded-full bg-paper px-5 py-2.5 font-bold text-ink/65 ring-1 ring-ink/10 hover:bg-paper-strong hover:text-ink">
+             <SkipForward aria-hidden="true" className="size-4" /> Skip this word
+           </Button>
+         </div>
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div>}
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD!</div><RevealWord word={current.word} stars={totalStars} /></>}
           {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div><RevealWord word={current.word} stars="☆☆☆" /></>}
+           {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
         </div>
-        <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "Look closely, listen carefully, and spell it!" : feedback === "wrong" ? "Listen again and have another try." : "Great learning!"}</p>
+         <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "Look closely, listen carefully, and spell it!" : feedback === "wrong" ? "Listen again and have another try." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
       </section>
     </main>
   );
@@ -200,7 +232,8 @@ function RevealWord({ word, stars }: { word: string; stars: string }) {
 }
 
 function StageSelect({ onSelect }: { onSelect: (stage: WordStage) => void }) {
-  return <main className="quest-surface min-h-screen overflow-hidden px-5 py-12 text-ink sm:py-16"><div className="relative mx-auto max-w-5xl"><div className="pointer-events-none absolute -left-2 top-0 text-3xl text-sun quest-float" aria-hidden="true">★</div><div className="pointer-events-none absolute right-0 top-14 text-2xl text-sky quest-float" aria-hidden="true">★</div><header className="text-center"><span className="inline-flex items-center gap-2 rounded-full bg-cream px-4 py-1.5 text-sm font-bold uppercase tracking-[0.18em] text-coral ring-1 ring-ink/5"><span aria-hidden="true">★</span> A spelling adventure</span><h1 className="mt-5 font-display text-5xl font-extrabold leading-none sm:text-6xl">Spelling <span className="text-coral">Quest</span></h1><p className="mx-auto mt-3 max-w-[30ch] text-lg font-semibold text-ink/70 sm:text-xl">Look. Listen. Spell!</p></header><div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{([1,2,3,4,5] as WordStage[]).map((item) => <button key={item} type="button" onClick={() => onSelect(item)} className="group relative flex flex-col items-start rounded-[28px] bg-cream p-6 text-left shadow-[0_8px_0_color-mix(in_oklab,var(--color-ink)_7%,transparent)] ring-1 ring-ink/5 transition hover:-translate-y-1 hover:shadow-[0_11px_0_color-mix(in_oklab,var(--color-ink)_7%,transparent)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky"><div className="flex w-full items-center justify-between"><span className="font-display text-2xl font-extrabold">Stage {item}</span><span className={`rounded-full ${stageColors[item - 1]} px-3 py-1 text-sm font-bold text-ink/80`}>{item + 2} letters</span></div><p className="mt-4 text-base font-semibold text-ink/60">{stageDescriptions[item - 1]}</p><div className="mt-5 flex w-full items-center justify-between"><span className="text-sm font-bold text-sky">100 words</span><span className="inline-flex items-center gap-1 rounded-full bg-coral px-4 py-2 text-sm font-bold text-cream transition-transform group-hover:scale-105">Play <ArrowRight aria-hidden="true" className="size-4" /></span></div></button>)}<div className="flex flex-col items-start justify-center rounded-[28px] bg-ink p-6 text-cream ring-1 ring-ink/5"><span className="font-display text-xl font-extrabold">Collect stars</span><p className="mt-2 text-sm font-semibold text-cream/70">Spell it right on the first try to earn three stars. Every word is a new discovery.</p><div className="mt-4 flex gap-1 text-2xl text-sun" aria-hidden="true">★★★</div></div></div></div></main>;
+  const stages: WordStage[] = [1, 2, 3, 4, 5, 7];
+  return <main className="quest-surface min-h-screen overflow-hidden px-5 py-12 text-ink sm:py-16"><div className="relative mx-auto max-w-5xl"><div className="pointer-events-none absolute -left-2 top-0 text-3xl text-sun quest-float" aria-hidden="true">★</div><div className="pointer-events-none absolute right-0 top-14 text-2xl text-sky quest-float" aria-hidden="true">★</div><header className="text-center"><span className="inline-flex items-center gap-2 rounded-full bg-cream px-4 py-1.5 text-sm font-bold uppercase tracking-[0.18em] text-coral ring-1 ring-ink/5"><span aria-hidden="true">★</span> A spelling adventure</span><h1 className="mt-5 font-display text-5xl font-extrabold leading-none sm:text-6xl">Spelling <span className="text-coral">Quest</span></h1><p className="mx-auto mt-3 max-w-[30ch] text-lg font-semibold text-ink/70 sm:text-xl">Look. Listen. Spell!</p></header><div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{stages.map((item) => <button key={item} type="button" onClick={() => onSelect(item)} className="group relative flex flex-col items-start rounded-[28px] bg-cream p-6 text-left shadow-[0_8px_0_color-mix(in_oklab,var(--color-ink)_7%,transparent)] ring-1 ring-ink/5 transition hover:-translate-y-1 hover:shadow-[0_11px_0_color-mix(in_oklab,var(--color-ink)_7%,transparent)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky"><div className="flex w-full items-center justify-between"><span className="font-display text-2xl font-extrabold">Stage {item}</span><span className={`rounded-full ${stageColors[item === 7 ? 5 : item - 1]} px-3 py-1 text-sm font-bold text-ink/80`}>{item === 7 ? "Mixed lengths" : `${item + 2} letters`}</span></div><p className="mt-4 text-base font-semibold text-ink/60">{stageDescriptions[item === 7 ? 5 : item - 1]}</p><div className="mt-5 flex w-full items-center justify-between"><span className="text-sm font-bold text-sky">{item === 7 ? "1 random word" : "100 words"}</span><span className="inline-flex items-center gap-1 rounded-full bg-coral px-4 py-2 text-sm font-bold text-cream transition-transform group-hover:scale-105">Play <ArrowRight aria-hidden="true" className="size-4" /></span></div></button>)}<div className="flex flex-col items-start justify-center rounded-[28px] bg-ink p-6 text-cream ring-1 ring-ink/5"><span className="font-display text-xl font-extrabold">Collect stars</span><p className="mt-2 text-sm font-semibold text-cream/70">Spell it right on the first try to earn three stars. Every word is a new discovery.</p><div className="mt-4 flex gap-1 text-2xl text-sun" aria-hidden="true">★★★</div></div></div></div></main>;
 }
 
 function Completion({ stage, stars, onPlayAgain, onNext, onHome }: { stage: WordStage; stars: number; onPlayAgain: () => void; onNext: () => void; onHome: () => void }) {
