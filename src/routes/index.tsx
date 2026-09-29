@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
-import { speakWord } from "@/lib/speech";
+import { VOICE_OPTIONS, speakWord, type VoiceChoice } from "@/lib/speech";
+import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
-type Feedback = "idle" | "wrong" | "correct" | "revealed";
+type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,8 +22,8 @@ export const Route = createFileRoute("/")({
   component: SpellingQuest,
 });
 
-const stageColors = ["bg-sun/25", "bg-sky/25", "bg-coral/20", "bg-sky/25", "bg-coral/20"];
-const stageDescriptions = ["Start with the little words.", "A few more letters to explore.", "Ready for a bigger challenge?", "Keep your spelling streak going.", "Take on the longest words!"];
+const stageColors = ["bg-sun/25", "bg-sky/25", "bg-coral/20", "bg-sky/25", "bg-coral/20", "bg-ink/10"];
+const stageDescriptions = ["Start with the little words.", "A few more letters to explore.", "Ready for a bigger challenge?", "Keep your spelling streak going.", "Take on the longest words!", "A surprise word from the whole quest!"];
 
 function shuffle<T>(items: T[]) {
   const copy = [...items];
@@ -49,6 +50,8 @@ function SpellingQuest() {
   const [lastStars, setLastStars] = useState(0);
   const [finished, setFinished] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [voice, setVoice] = useState<VoiceChoice>("default");
+  const validationSessionId = useRef<string | undefined>(undefined);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const current = session[position];
@@ -66,20 +69,26 @@ function SpellingQuest() {
     setImageFailed(false);
     const timer = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
-      speakWord(current.word);
+      speakWord(current.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
-  }, [current, finished]);
+  }, [current, finished, voice]);
 
   const totalStars = useMemo(() => "★".repeat(Math.min(3, lastStars)) + "☆".repeat(3 - Math.min(3, lastStars)), [lastStars]);
 
   function startStage(nextStage: WordStage) {
     setStage(nextStage);
-    setSession(shuffle(STAGE_WORDS[nextStage]));
+    const words = nextStage === 7
+      ? [STAGE_WORDS[7][Math.floor(Math.random() * STAGE_WORDS[7].length)]].filter((entry): entry is WordEntry => Boolean(entry))
+      : shuffle(STAGE_WORDS[nextStage]);
+    setSession(words);
     setPosition(0);
     setEarnedStars(0);
     setLastStars(0);
     setFinished(false);
+    void startValidationSession(String(nextStage)).then((sessionInfo) => {
+      validationSessionId.current = sessionInfo.sessionId;
+    });
   }
 
   function goHome() {
