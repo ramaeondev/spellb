@@ -181,14 +181,14 @@ function SpellingQuest() {
           </Button>
           <div className="text-center">
             <p className="font-display text-xl font-extrabold leading-none">Stage {stage}</p>
-            <p className="mt-1 text-sm font-bold text-ink/55">Word {progress} of 100</p>
+           <p className="mt-1 text-sm font-bold text-ink/55">Word {progress} of {stage === 7 ? 1 : 100}</p>
           </div>
           <div className="flex items-center gap-1.5 text-sun" aria-label={`${earnedStars} stars earned`}>
             <span aria-hidden="true" className="text-lg">★</span><span className="text-sm font-extrabold text-ink">{earnedStars}</span>
           </div>
         </div>
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-paper ring-1 ring-ink/5" aria-label={`${progress} of 100 words completed`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-          <div className="h-full rounded-full bg-gradient-to-r from-sky to-coral transition-all duration-500" style={{ width: `${progress}%` }} />
+         <div className="mt-5 h-3 overflow-hidden rounded-full bg-paper ring-1 ring-ink/5" aria-label={`${progress} of ${stage === 7 ? 1 : 100} words completed`} role="progressbar" aria-valuemin={0} aria-valuemax={stage === 7 ? 1 : 100} aria-valuenow={progress}>
+           <div className="h-full rounded-full bg-gradient-to-r from-sky to-coral transition-all duration-500" style={{ width: `${(progress / (stage === 7 ? 1 : 100)) * 100}%` }} />
         </div>
         <div className="mt-7 grid place-items-center">
           <div className="relative aspect-[4/3] w-full max-w-md overflow-hidden rounded-[24px] bg-paper ring-1 ring-ink/5">
