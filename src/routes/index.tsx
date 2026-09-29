@@ -196,19 +196,32 @@ function SpellingQuest() {
           </div>
         </div>
         <div className="mt-5 flex justify-center">
-          <Button type="button" onClick={() => current && speakWord(current.word)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
+           <Button type="button" onClick={() => current && speakWord(current.word, voice)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
             <Volume2 aria-hidden="true" className="size-5" /> Hear Again
           </Button>
         </div>
+         <div className="mx-auto mt-4 flex max-w-md flex-col gap-2 text-left">
+           <label htmlFor="voice-choice" className="text-xs font-extrabold uppercase tracking-[0.12em] text-ink/50">Listening voice</label>
+           <select id="voice-choice" value={voice} onChange={(event) => setVoice(event.target.value as VoiceChoice)} className="rounded-2xl bg-paper px-4 py-3 font-bold text-ink outline-none ring-1 ring-ink/10 focus:ring-4 focus:ring-sky">
+             {VOICE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+           </select>
+           <p className="text-xs font-semibold text-ink/45">Indian voices appear when your device provides them.</p>
+         </div>
         <div className="mt-7 flex flex-wrap justify-center gap-2.5 sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
           {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className="size-14 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 ring-sky/70 transition focus:ring-4 focus:ring-sky sm:size-16" />)}
         </div>
+         <div className="mt-5 flex justify-center">
+           <Button type="button" variant="ghost" onClick={skipWord} className="rounded-full bg-paper px-5 py-2.5 font-bold text-ink/65 ring-1 ring-ink/10 hover:bg-paper-strong hover:text-ink">
+             <SkipForward aria-hidden="true" className="size-4" /> Skip this word
+           </Button>
+         </div>
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div>}
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD!</div><RevealWord word={current.word} stars={totalStars} /></>}
           {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div><RevealWord word={current.word} stars="☆☆☆" /></>}
+           {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
         </div>
-        <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "Look closely, listen carefully, and spell it!" : feedback === "wrong" ? "Listen again and have another try." : "Great learning!"}</p>
+         <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "Look closely, listen carefully, and spell it!" : feedback === "wrong" ? "Listen again and have another try." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
       </section>
     </main>
   );
