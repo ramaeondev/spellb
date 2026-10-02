@@ -72,7 +72,7 @@ function SpellingQuest() {
       speakWord(current.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
-  }, [current, finished, voice]);
+  }, [current, finished]);
 
   const totalStars = useMemo(() => "★".repeat(Math.min(3, lastStars)) + "☆".repeat(3 - Math.min(3, lastStars)), [lastStars]);
 
