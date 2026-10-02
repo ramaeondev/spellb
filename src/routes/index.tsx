@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
-import { VOICE_OPTIONS, speakWord, type VoiceChoice } from "@/lib/speech";
+import { VOICE_OPTIONS, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
 type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
@@ -69,7 +69,7 @@ function SpellingQuest() {
     setImageFailed(false);
     const timer = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
-      speakWord(current.word, voice);
+      speakSpellingPrompt(current.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [current, finished]);
@@ -102,10 +102,40 @@ function SpellingQuest() {
     if (feedback !== "idle") return;
     const next = value.replace(/[^a-z]/gi, "").slice(-1).toUpperCase();
     const nextLetters = [...letters];
+    if (!next) {
+      nextLetters[index] = "";
+      setLetters(nextLetters);
+      return;
+    }
+
+    if (next !== current?.word[index]?.toUpperCase()) {
+      nextLetters[index] = next;
+      setLetters(nextLetters);
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      recordValidationEvent(validationSessionId.current ?? "", current?.id ?? "", "answered");
+      if (nextAttempts >= 3) {
+        setLastStars(0);
+        setFeedback("revealed");
+        speakFeedback("Oops! Let's learn this one.", voice);
+        window.setTimeout(advance, 1600);
+      } else {
+        setFeedback("wrong");
+        speakFeedback("Oops! Try again.", voice);
+        window.setTimeout(() => {
+          setLetters((currentLetters) => currentLetters.map((letter, letterIndex) => letterIndex === index && letter === next ? "" : letter));
+          setFeedback("idle");
+          inputRefs.current[index]?.focus();
+        }, 850);
+      }
+      return;
+    }
+
     nextLetters[index] = next;
     setLetters(nextLetters);
+    speakLetter(next, voice);
     if (next && index < nextLetters.length - 1) inputRefs.current[index + 1]?.focus();
-    if (nextLetters.every(Boolean)) window.setTimeout(() => checkAnswer(nextLetters), 90);
+    if (nextLetters.every(Boolean)) window.setTimeout(() => checkAnswer(nextLetters), 450);
   }
 
   function handleKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
@@ -127,29 +157,14 @@ function SpellingQuest() {
 
   function checkAnswer(answer = letters) {
     if (!current || feedback !== "idle" || answer.some((letter) => !letter)) return;
-    const isCorrect = answer.join("").toLowerCase() === current.word;
-    if (isCorrect) {
-      const stars = attempts === 0 ? 3 : attempts === 1 ? 2 : 1;
-      setLastStars(stars);
-      setEarnedStars((score) => score + stars);
-      setFeedback("correct");
-      recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
-      speakWord(current.word, voice);
-      window.setTimeout(advance, 1100);
-      return;
-    }
-    const nextAttempts = attempts + 1;
-    setAttempts(nextAttempts);
-    setFeedback(nextAttempts >= 3 ? "revealed" : "wrong");
+    if (answer.join("").toLowerCase() !== current.word) return;
+    const stars = attempts === 0 ? 3 : attempts === 1 ? 2 : 1;
+    setLastStars(stars);
+    setEarnedStars((score) => score + stars);
+    setFeedback("correct");
     recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
-    speakWord(current.word, voice);
-    if (nextAttempts >= 3) {
-      setLastStars(0);
-      window.setTimeout(advance, 1600);
-    } else {
-      resetForRetry();
-      window.setTimeout(() => setFeedback("idle"), 650);
-    }
+    speakFeedback("Good! Correct!", voice);
+    window.setTimeout(advance, 1400);
   }
 
   function advance() {
@@ -196,7 +211,7 @@ function SpellingQuest() {
           </div>
         </div>
         <div className="mt-5 flex justify-center">
-           <Button type="button" onClick={() => current && speakWord(current.word, voice)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
+           <Button type="button" onClick={() => current && speakSpellingPrompt(current.word, voice)} className="rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
             <Volume2 aria-hidden="true" className="size-5" /> Hear Again
           </Button>
         </div>
@@ -208,7 +223,7 @@ function SpellingQuest() {
            <p className="text-xs font-semibold text-ink/45">Indian voices appear when your device provides them.</p>
          </div>
         <div className="mt-7 flex flex-wrap justify-center gap-2.5 sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
-          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className="size-14 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 ring-sky/70 transition focus:ring-4 focus:ring-sky sm:size-16" />)}
+          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className={`size-14 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 sm:size-16 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
         </div>
          <div className="mt-5 flex justify-center">
            <Button type="button" variant="ghost" onClick={skipWord} className="rounded-full bg-paper px-5 py-2.5 font-bold text-ink/65 ring-1 ring-ink/10 hover:bg-paper-strong hover:text-ink">
@@ -216,12 +231,12 @@ function SpellingQuest() {
            </Button>
          </div>
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
-          {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div>}
-          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD!</div><RevealWord word={current.word} stars={totalStars} /></>}
-          {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> WRONG</div><RevealWord word={current.word} stars="☆☆☆" /></>}
+          {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> OOPS! TRY AGAIN</div>}
+          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
+          {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /></>}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
         </div>
-         <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "Look closely, listen carefully, and spell it!" : feedback === "wrong" ? "Listen again and have another try." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
+         <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "How do we spell it?" : feedback === "wrong" ? "That letter didn't match. Try this spot again." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
       </section>
     </main>
   );
