@@ -25,14 +25,30 @@ function findVoice(choice: VoiceChoice) {
   return voices.find((voice) => voice.lang.toLowerCase() === language) ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
 }
 
-export function speakWord(word: string, choice: VoiceChoice = "default") {
+function speakText(text: string, choice: VoiceChoice, cancelCurrent: boolean) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(word);
+  if (cancelCurrent) window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
   const voice = findVoice(choice);
   if (voice) utterance.voice = voice;
   utterance.rate = 0.78;
   utterance.pitch = 1.08;
   utterance.volume = 1;
   window.speechSynthesis.speak(utterance);
+}
+
+export function speakWord(word: string, choice: VoiceChoice = "default") {
+  speakText(word, choice, true);
+}
+
+export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default") {
+  speakText(`How do we spell ${word}?`, choice, true);
+}
+
+export function speakLetter(letter: string, choice: VoiceChoice = "default") {
+  speakText(letter, choice, false);
+}
+
+export function speakFeedback(message: string, choice: VoiceChoice = "default") {
+  speakText(message, choice, true);
 }
