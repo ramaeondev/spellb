@@ -2,4 +2,4 @@
 - [x] Add and validate 500 unique words across five exact-length stages
 - [x] Implement image, speech, input, attempt, feedback, scoring, and completion flows
 - [x] Verify the preview and central reveal rule
-- [ ] Add voice choices, skip control, session validation, and Stage 7 random mix
+- [x] Add voice choices, skip control, session validation, and Stage 7 random mix
