@@ -46,7 +46,7 @@ export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default
 }
 
 export function speakLetter(letter: string, choice: VoiceChoice = "default") {
-  speakText(letter, choice, false);
+  speakText(letter.toLowerCase(), choice, false);
 }
 
 export function speakFeedback(message: string, choice: VoiceChoice = "default") {
