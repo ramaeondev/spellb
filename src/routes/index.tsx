@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
