@@ -196,7 +196,7 @@ function SpellingQuest() {
   }
 
   async function requestHint() {
-    if (!current || feedback !== "wrong" || hintLoading) return;
+    if (!current || (!hint && feedback !== "wrong") || hintLoading) return;
     setHintLoading(true);
     setHintError(false);
     try {
@@ -269,7 +269,7 @@ function SpellingQuest() {
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
           {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /></>}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
-          {feedback === "wrong" && <div className="flex flex-col items-center gap-2">
+          {(feedback === "wrong" || hint || hintLoading || hintError) && <div className="flex flex-col items-center gap-2">
             {hint && <p className="max-w-md rounded-2xl bg-sun/20 px-4 py-2 text-center text-base font-extrabold text-ink" role="status"><span aria-hidden="true">💡</span> {hint}</p>}
             {hintError && <p className="text-sm font-bold text-coral" role="status">The hint is taking a break. Try again.</p>}
             <Button type="button" variant="ghost" onClick={requestHint} disabled={hintLoading} className="rounded-full bg-sun/25 px-5 py-2.5 font-bold text-ink ring-1 ring-sun/40 hover:bg-sun/35 disabled:cursor-wait disabled:opacity-70">
