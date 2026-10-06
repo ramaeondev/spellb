@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createHintResponse } from "./ai/responses.ts";
+import { createHintResponse } from "./ai/responses.server.ts";
 
 const SAFE_FALLBACK = "Look closely at the picture and say the word slowly.";
 

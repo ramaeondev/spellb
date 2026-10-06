@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, type ModelMessage } from "ai";
-import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "./run-id.ts";
+import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId } from "./run-id.server.ts";
 
 export function createHintResponse(request: Request, messages: ModelMessage[], instructions: string) {
   const apiKey = process.env["LOVABLE_API_KEY"];
