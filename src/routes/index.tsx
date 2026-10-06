@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, SkipForward, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
 import { VOICE_OPTIONS, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
+import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
 type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
@@ -51,8 +52,12 @@ function SpellingQuest() {
   const [finished, setFinished] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [voice, setVoice] = useState<VoiceChoice>("default");
+  const [hint, setHint] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState(false);
   const validationSessionId = useRef<string | undefined>(undefined);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const getHint = useServerFn(requestSpellingHint);
 
   const current = session[position];
   const progress = session.length ? Math.min(position + 1, session.length) : 0;
@@ -67,6 +72,9 @@ function SpellingQuest() {
     setAttempts(0);
     setFeedback("idle");
     setImageFailed(false);
+    setHint(null);
+    setHintLoading(false);
+    setHintError(false);
     const timer = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
       speakSpellingPrompt(current.word, voice);
@@ -115,12 +123,15 @@ function SpellingQuest() {
       setAttempts(nextAttempts);
       recordValidationEvent(validationSessionId.current ?? "", current?.id ?? "", "answered");
       if (nextAttempts >= 3) {
+        setHint(null);
         setLastStars(0);
         setFeedback("revealed");
         speakFeedback("Oops! Let's learn this one.", voice);
         window.setTimeout(advance, 1600);
       } else {
         setFeedback("wrong");
+        setHint(null);
+        setHintError(false);
         speakFeedback("Oops! Try again.", voice);
         window.setTimeout(() => {
           setLetters((currentLetters) => currentLetters.map((letter, letterIndex) => letterIndex === index && letter === next ? "" : letter));
@@ -183,6 +194,28 @@ function SpellingQuest() {
     window.setTimeout(advance, 500);
   }
 
+  async function requestHint() {
+    if (!current || feedback !== "wrong" || hintLoading) return;
+    setHintLoading(true);
+    setHintError(false);
+    try {
+      const result = await getHint({
+        data: {
+          target: current.word,
+          category: current.category,
+          typedLetters: letters.map((letter) => letter || "_").join(""),
+          attempts,
+        },
+      });
+      setHint(result.hint);
+      speakFeedback(result.hint, voice);
+    } catch {
+      setHintError(true);
+    } finally {
+      setHintLoading(false);
+    }
+  }
+
   if (!stage) return <StageSelect onSelect={startStage} />;
   if (finished) return <Completion stage={stage} stars={earnedStars} onPlayAgain={() => startStage(stage)} onNext={() => stage < 5 ? startStage((stage + 1) as WordStage) : goHome()} onHome={goHome} />;
   if (!current) return <StageSelect onSelect={startStage} />;
@@ -235,6 +268,14 @@ function SpellingQuest() {
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
           {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /></>}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
+          {feedback === "wrong" && <div className="flex flex-col items-center gap-2">
+            {hint && <p className="max-w-md rounded-2xl bg-sun/20 px-4 py-2 text-center text-base font-extrabold text-ink" role="status"><span aria-hidden="true">💡</span> {hint}</p>}
+            {hintError && <p className="text-sm font-bold text-coral" role="status">The hint is taking a break. Try again.</p>}
+            <Button type="button" variant="ghost" onClick={requestHint} disabled={hintLoading} className="rounded-full bg-sun/25 px-5 py-2.5 font-bold text-ink ring-1 ring-sun/40 hover:bg-sun/35 disabled:cursor-wait disabled:opacity-70">
+              {hintLoading ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <Lightbulb aria-hidden="true" className="size-4" />}
+              {hintLoading ? "Thinking..." : hint ? "Try another hint" : "Get a hint"}
+            </Button>
+          </div>}
         </div>
          <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "How do we spell it?" : feedback === "wrong" ? "That letter didn't match. Try this spot again." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
       </section>
