@@ -12,3 +12,4 @@
 ## Architecture decisions
 
 - Keep session uniqueness validation client-side with FingerprintJS and best-effort local session records because this game has no backend connection.
+- Keep AI hint generation in a server-only TanStack function using the Lovable AI Gateway so the gateway secret and prompt policy never enter the browser.

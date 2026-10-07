@@ -206,6 +206,7 @@ function SpellingQuest() {
           category: current.category,
           typedLetters: letters.map((letter) => letter || "_").join(""),
           attempts,
+          imageUrl: new URL(current.image, window.location.origin).href,
         },
       });
       setHint(result.hint);
