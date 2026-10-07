@@ -200,13 +200,22 @@ function SpellingQuest() {
     setHintLoading(true);
     setHintError(false);
     try {
+      const imageResponse = await fetch(current.image);
+      if (!imageResponse.ok) throw new Error("Picture unavailable");
+      const imageBlob = await imageResponse.blob();
+      const imageData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Picture unavailable"));
+        reader.onerror = () => reject(new Error("Picture unavailable"));
+        reader.readAsDataURL(imageBlob);
+      });
       const result = await getHint({
         data: {
           target: current.word,
           category: current.category,
           typedLetters: letters.map((letter) => letter || "_").join(""),
           attempts,
-          imageUrl: new URL(current.image, window.location.origin).href,
+          imageData,
         },
       });
       setHint(result.hint);
