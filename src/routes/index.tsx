@@ -41,6 +41,32 @@ function shuffle<T>(items: T[]) {
   return copy;
 }
 
+function imageBlobToPngDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 384;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Picture unavailable"));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Picture unavailable"));
+    };
+    image.src = objectUrl;
+  });
+}
+
 function SpellingQuest() {
   const [stage, setStage] = useState<WordStage | null>(null);
   const [session, setSession] = useState<WordEntry[]>([]);
@@ -203,12 +229,7 @@ function SpellingQuest() {
       const imageResponse = await fetch(current.image);
       if (!imageResponse.ok) throw new Error("Picture unavailable");
       const imageBlob = await imageResponse.blob();
-      const imageData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Picture unavailable"));
-        reader.onerror = () => reject(new Error("Picture unavailable"));
-        reader.readAsDataURL(imageBlob);
-      });
+      const imageData = await imageBlobToPngDataUrl(imageBlob);
       const result = await getHint({
         data: {
           target: current.word,
