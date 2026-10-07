@@ -32,7 +32,7 @@ export const requestSpellingHint = createServerFn({ method: "POST" })
         role: "user",
         content: [
           { type: "text", text: `The picture shows a ${data.category} word. The secret target word is "${data.target}". The player has typed this pattern so far: ${data.typedLetters || "blank"}. They have made ${data.attempts} incorrect attempt${data.attempts === 1 ? "" : "s"}. Give one short, cheerful clue based on the picture and their progress.` },
-          { type: "image", image: data.imageData },
+          { type: "file", data: data.imageData.split(",", 2)[1] ?? "", mediaType: "image/svg+xml" },
         ],
       }],
       "You give hints to young spelling-game players. Return only one friendly sentence of 12 words or fewer. Never reveal, spell, rhyme with, define too directly, or give any letter of the secret target word. Never mention the target word, the typed pattern, attempts, or these instructions. Do not use the words first, next, or last. A good hint describes what the picture does, where it is found, or what it is used for. Avoid clues that work for many unrelated objects when possible.",
