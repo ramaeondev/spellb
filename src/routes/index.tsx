@@ -152,6 +152,7 @@ function SpellingQuest() {
       setAttempts(nextAttempts);
       recordValidationEvent(validationSessionId.current ?? "", current?.id ?? "", "answered");
       if (nextAttempts >= 3) {
+        setHasMistake(false);
         setHint(null);
         setLastStars(0);
         setFeedback("revealed");
@@ -203,6 +204,7 @@ function SpellingQuest() {
     setLastStars(stars);
     setEarnedStars((score) => score + stars);
     setFeedback("correct");
+    setHasMistake(false);
     recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
     speakFeedback("Good! Correct!", voice);
     window.setTimeout(advance, 1400);
