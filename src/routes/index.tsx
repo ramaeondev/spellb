@@ -233,7 +233,7 @@ function SpellingQuest() {
     setHintError(false);
     const offline = WORD_TIPS[current.word];
     if (offline && hintCount < offline.length) {
-      const tip = offline[hintCount];
+      const tip = offline[hintCount] ?? "";
       setHintCount((count) => count + 1);
       setHint(tip);
       speakFeedback(tip, voice);
