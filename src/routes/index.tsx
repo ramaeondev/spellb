@@ -157,7 +157,6 @@ function SpellingQuest() {
         setLastStars(0);
         setFeedback("revealed");
         speakFeedback("Oops! Let's learn this one.", voice);
-        window.setTimeout(advance, 1600);
       } else {
         setFeedback("wrong");
         setHasMistake(true);
