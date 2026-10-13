@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
+import { WORD_TIPS } from "@/data/word-tips";
 import { VOICE_OPTIONS, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
@@ -83,6 +84,7 @@ function SpellingQuest() {
   const [hintLoading, setHintLoading] = useState(false);
   const [hintError, setHintError] = useState(false);
   const [hasMistake, setHasMistake] = useState(false);
+  const [hintCount, setHintCount] = useState(0);
   const validationSessionId = useRef<string | undefined>(undefined);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const getHint = useServerFn(requestSpellingHint);
@@ -101,6 +103,7 @@ function SpellingQuest() {
     setFeedback("idle");
     setImageFailed(false);
     setHint(null);
+    setHintCount(0);
     setHintLoading(false);
     setHintError(false);
     setHasMistake(false);
@@ -157,7 +160,6 @@ function SpellingQuest() {
         setLastStars(0);
         setFeedback("revealed");
         speakFeedback("Oops! Let's learn this one.", voice);
-        window.setTimeout(advance, 1600);
       } else {
         setFeedback("wrong");
         setHasMistake(true);
@@ -228,8 +230,16 @@ function SpellingQuest() {
 
   async function requestHint() {
     if (!current || !hasMistake || hintLoading) return;
-    setHintLoading(true);
     setHintError(false);
+    const offline = WORD_TIPS[current.word];
+    if (offline && hintCount < offline.length) {
+      const tip = offline[hintCount] ?? "";
+      setHintCount((count) => count + 1);
+      setHint(tip);
+      speakFeedback(tip, voice);
+      return;
+    }
+    setHintLoading(true);
     try {
       const imageResponse = await fetch(current.image);
       if (!imageResponse.ok) throw new Error("Picture unavailable");
@@ -303,7 +313,7 @@ function SpellingQuest() {
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> OOPS! TRY AGAIN</div>}
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
-          {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /></>}
+          {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /><Button type="button" onClick={advance} className="min-h-14 rounded-full bg-sky px-7 py-3 text-base font-bold text-cream hover:scale-105 hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-5" /></Button></>}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
           {(hasMistake || hint || hintLoading || hintError) && <div className="flex flex-col items-center gap-2">
             {hint && <p className="max-w-md rounded-2xl bg-sun/20 px-4 py-2 text-center text-base font-extrabold text-ink" role="status"><span aria-hidden="true">💡</span> {hint}</p>}
