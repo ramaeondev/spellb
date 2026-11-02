@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } 
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
 import { WORD_TIPS } from "@/data/word-tips";
-import { VOICE_OPTIONS, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
+import { VOICE_OPTIONS, preloadStudioPrompt, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
@@ -79,7 +79,7 @@ function SpellingQuest() {
   const [lastStars, setLastStars] = useState(0);
   const [finished, setFinished] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const [voice, setVoice] = useState<VoiceChoice>("default");
+  const [voice, setVoice] = useState<VoiceChoice>("studio-indian-female");
   const [hint, setHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [hintError, setHintError] = useState(false);
@@ -110,6 +110,8 @@ function SpellingQuest() {
     const timer = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
       speakSpellingPrompt(current.word, voice);
+      const upcoming = session[position + 1];
+      if (upcoming) preloadStudioPrompt(upcoming.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [current, finished]);
