@@ -1,12 +1,74 @@
-export type VoiceChoice = "default" | "indian-female" | "indian-male" | "us" | "uk";
+export type VoiceChoice =
+  | "studio-indian-female"
+  | "studio-indian-male"
+  | "default"
+  | "indian-female"
+  | "indian-male"
+  | "us"
+  | "uk";
 
 export const VOICE_OPTIONS: Array<{ value: VoiceChoice; label: string }> = [
-  { value: "default", label: "Friendly voice (automatic)" },
-  { value: "indian-female", label: "Female voice · India" },
-  { value: "indian-male", label: "Male voice · India" },
-  { value: "us", label: "English voice · US" },
-  { value: "uk", label: "English voice · UK" },
+  { value: "studio-indian-female", label: "Studio female · India" },
+  { value: "studio-indian-male", label: "Studio male · India" },
+  { value: "default", label: "Device voice (automatic)" },
+  { value: "indian-female", label: "Device female · India" },
+  { value: "indian-male", label: "Device male · India" },
+  { value: "us", label: "Device voice · US" },
+  { value: "uk", label: "Device voice · UK" },
 ];
+
+/** Studio voices play pre-recorded clips; anything not recorded uses the matching device voice. */
+const STUDIO_FALLBACK: Partial<Record<VoiceChoice, VoiceChoice>> = {
+  "studio-indian-female": "indian-female",
+  "studio-indian-male": "indian-male",
+};
+const STUDIO_FOLDER: Partial<Record<VoiceChoice, string>> = {
+  "studio-indian-female": "indian-female",
+  "studio-indian-male": "indian-male",
+};
+const PHRASE_FILES: Record<string, string> = {
+  "Good! Correct!": "correct",
+  "Oops! Try again.": "oops",
+  "Oops! Let's learn this one.": "learn",
+};
+
+let currentAudio: HTMLAudioElement | null = null;
+const audioCache = new Map<string, HTMLAudioElement>();
+
+function stopAll() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+function playStudio(path: string, fallback: () => void) {
+  stopAll();
+  let audio = audioCache.get(path);
+  if (!audio) {
+    audio = new Audio(path);
+    audio.preload = "auto";
+    audioCache.set(path, audio);
+  }
+  audio.currentTime = 0;
+  currentAudio = audio;
+  audio.play().catch(() => {
+    audioCache.delete(path);
+    fallback();
+  });
+}
+
+/** Warm the cache so the next prompt plays with no delay. */
+export function preloadStudioPrompt(word: string, choice: VoiceChoice) {
+  const folder = STUDIO_FOLDER[choice];
+  if (!folder || typeof window === "undefined") return;
+  const path = `/audio/${folder}/prompt/${word.toLowerCase()}.mp3`;
+  if (audioCache.has(path)) return;
+  const audio = new Audio(path);
+  audio.preload = "auto";
+  audioCache.set(path, audio);
+}
 
 function findVoice(choice: VoiceChoice) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
@@ -35,9 +97,10 @@ const VOICE_PROFILES: Record<VoiceChoice, { pitch: number; rate: number }> = {
   uk: { pitch: 1.05, rate: 0.8 },
 };
 
-function speakText(text: string, choice: VoiceChoice, cancelCurrent: boolean) {
+function speakText(text: string, requested: VoiceChoice, cancelCurrent: boolean) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  if (cancelCurrent) window.speechSynthesis.cancel();
+  const choice = STUDIO_FALLBACK[requested] ?? requested;
+  if (cancelCurrent) stopAll();
   const utterance = new SpeechSynthesisUtterance(text);
   const voice = findVoice(choice);
   if (voice) {
@@ -58,13 +121,21 @@ export function speakWord(word: string, choice: VoiceChoice = "default") {
 }
 
 export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default") {
-  speakText(`How do we spell ${word}?`, choice, true);
+  const text = `How do we spell ${word}?`;
+  const folder = STUDIO_FOLDER[choice];
+  if (folder) return playStudio(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`, () => speakText(text, choice, true));
+  speakText(text, choice, true);
 }
 
 export function speakLetter(letter: string, choice: VoiceChoice = "default") {
+  // Letters always use the instant device voice so typing never lags.
+  if (currentAudio) stopAll();
   speakText(letter.toLowerCase(), choice, false);
 }
 
 export function speakFeedback(message: string, choice: VoiceChoice = "default") {
+  const folder = STUDIO_FOLDER[choice];
+  const phrase = PHRASE_FILES[message];
+  if (folder && phrase) return playStudio(`/audio/${folder}/phrases/${phrase}.mp3`, () => speakText(message, choice, true));
   speakText(message, choice, true);
 }
