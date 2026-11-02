@@ -1,6 +1,8 @@
 export type VoiceChoice =
   | "studio-indian-female"
   | "studio-indian-male"
+  | "wasm-female"
+  | "wasm-male"
   | "default"
   | "indian-female"
   | "indian-male"
@@ -10,6 +12,8 @@ export type VoiceChoice =
 export const VOICE_OPTIONS: Array<{ value: VoiceChoice; label: string }> = [
   { value: "studio-indian-female", label: "Studio female · India" },
   { value: "studio-indian-male", label: "Studio male · India" },
+  { value: "wasm-female", label: "On-device AI · female" },
+  { value: "wasm-male", label: "On-device AI · male" },
   { value: "default", label: "Device voice (automatic)" },
   { value: "indian-female", label: "Device female · India" },
   { value: "indian-male", label: "Device male · India" },
@@ -25,6 +29,16 @@ const STUDIO_FALLBACK: Partial<Record<VoiceChoice, VoiceChoice>> = {
 const STUDIO_FOLDER: Partial<Record<VoiceChoice, string>> = {
   "studio-indian-female": "indian-female",
   "studio-indian-male": "indian-male",
+};
+
+/** On-device AI voices run in the browser (WASM); the model downloads once and is stored locally. */
+const WASM_VOICE: Partial<Record<VoiceChoice, string>> = {
+  "wasm-female": "en_GB-alba-medium",
+  "wasm-male": "en_US-ryan-medium",
+};
+const WASM_FALLBACK: Partial<Record<VoiceChoice, VoiceChoice>> = {
+  "wasm-female": "indian-female",
+  "wasm-male": "indian-male",
 };
 const PHRASE_FILES: Record<string, string> = {
   "Good! Correct!": "correct",
