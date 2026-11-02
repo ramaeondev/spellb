@@ -30,6 +30,16 @@ const STUDIO_FOLDER: Partial<Record<VoiceChoice, string>> = {
   "studio-indian-female": "indian-female",
   "studio-indian-male": "indian-male",
 };
+
+/** On-device AI voices run in the browser (WASM); the model downloads once and is stored locally. */
+const WASM_VOICE: Partial<Record<VoiceChoice, string>> = {
+  "wasm-female": "en_GB-alba-medium",
+  "wasm-male": "en_US-ryan-medium",
+};
+const WASM_FALLBACK: Partial<Record<VoiceChoice, VoiceChoice>> = {
+  "wasm-female": "indian-female",
+  "wasm-male": "indian-male",
+};
 const PHRASE_FILES: Record<string, string> = {
   "Good! Correct!": "correct",
   "Oops! Try again.": "oops",
