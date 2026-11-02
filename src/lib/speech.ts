@@ -1,6 +1,8 @@
 export type VoiceChoice =
   | "studio-indian-female"
   | "studio-indian-male"
+  | "wasm-female"
+  | "wasm-male"
   | "default"
   | "indian-female"
   | "indian-male"
@@ -10,6 +12,8 @@ export type VoiceChoice =
 export const VOICE_OPTIONS: Array<{ value: VoiceChoice; label: string }> = [
   { value: "studio-indian-female", label: "Studio female · India" },
   { value: "studio-indian-male", label: "Studio male · India" },
+  { value: "wasm-female", label: "On-device AI · female" },
+  { value: "wasm-male", label: "On-device AI · male" },
   { value: "default", label: "Device voice (automatic)" },
   { value: "indian-female", label: "Device female · India" },
   { value: "indian-male", label: "Device male · India" },
