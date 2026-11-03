@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } 
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
 import { WORD_TIPS } from "@/data/word-tips";
-import { VOICE_OPTIONS, preloadStudioPrompt, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
+import { VOICE_OPTIONS, preloadVoice, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
@@ -111,7 +111,7 @@ function SpellingQuest() {
       inputRefs.current[0]?.focus();
       speakSpellingPrompt(current.word, voice);
       const upcoming = session[position + 1];
-      if (upcoming) preloadStudioPrompt(upcoming.word, voice);
+      if (upcoming) preloadVoice(upcoming.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [current, finished]);
