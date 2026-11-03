@@ -88,7 +88,7 @@ export function preloadStudioPrompt(word: string, choice: VoiceChoice) {
 /** Warm whichever engine the chosen voice uses: studio clip cache or the on-device AI model. */
 export function preloadVoice(word: string, choice: VoiceChoice) {
   const folder = STUDIO_FOLDER[choice];
-  if (folder) return preloadStudioPrompt(word, choice);
+  if (folder) return word ? preloadStudioPrompt(word, choice) : undefined;
   const voiceId = WASM_VOICE[choice];
   if (voiceId && typeof window !== "undefined") getPiperSession(voiceId).catch(() => {});
 }
