@@ -84,6 +84,62 @@ export function preloadStudioPrompt(word: string, choice: VoiceChoice) {
   audioCache.set(path, audio);
 }
 
+/** Warm whichever engine the chosen voice uses: studio clip cache or the on-device AI model. */
+export function preloadVoice(word: string, choice: VoiceChoice) {
+  const folder = STUDIO_FOLDER[choice];
+  if (folder) return preloadStudioPrompt(word, choice);
+  const voiceId = WASM_VOICE[choice];
+  if (voiceId && typeof window !== "undefined") getPiperSession(voiceId).catch(() => {});
+}
+
+// ---- On-device AI (WASM) voices ----
+
+type PiperModule = typeof import("@jtsage/piper-tts-web");
+type PiperSession = Awaited<ReturnType<PiperModule["TtsSession"]["create"]>>;
+
+let piperModule: PiperModule | null = null;
+const piperSessions = new Map<string, Promise<PiperSession>>();
+/** Incremented whenever playback stops; stale synthesis results are discarded. */
+let playToken = 0;
+
+function getPiperSession(voiceId: string): Promise<PiperSession> {
+  let entry = piperSessions.get(voiceId);
+  if (!entry) {
+    entry = (async () => {
+      if (!piperModule) piperModule = await import("@jtsage/piper-tts-web");
+      return piperModule.TtsSession.create({ voiceId });
+    })();
+    entry.catch(() => piperSessions.delete(voiceId));
+    piperSessions.set(voiceId, entry);
+  }
+  return entry;
+}
+
+async function playWasm(text: string, voiceId: string, fallback: () => void) {
+  if (typeof window === "undefined") {
+    fallback();
+    return;
+  }
+  stopAll();
+  const token = playToken;
+  try {
+    const session = await getPiperSession(voiceId);
+    const wav = await session.predict(text);
+    if (token !== playToken) return;
+    const url = URL.createObjectURL(wav);
+    const audio = new Audio(url);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      if (currentAudio === audio) currentAudio = null;
+    };
+    currentAudio = audio;
+    await audio.play();
+  } catch {
+    piperSessions.delete(voiceId);
+    if (token === playToken) fallback();
+  }
+}
+
 function findVoice(choice: VoiceChoice) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
   const voices = window.speechSynthesis.getVoices();
