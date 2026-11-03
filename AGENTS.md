@@ -13,3 +13,4 @@
 
 - Keep session uniqueness validation client-side with FingerprintJS and best-effort local session records because this game has no backend connection.
 - Keep AI hint generation in a server-only TanStack function using the Lovable AI Gateway so the gateway secret and prompt policy never enter the browser.
+- Load the on-device AI voices (@jtsage/piper-tts-web) only through a dynamic import inside playback, never at module top level, so SSR never evaluates the WASM bundle; typed letters always use the instant device voice so typing never waits on synthesis.
