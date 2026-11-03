@@ -5,7 +5,17 @@ import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } 
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
 import { WORD_TIPS } from "@/data/word-tips";
-import { VOICE_OPTIONS, preloadVoice, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
+import {
+  VOICE_OPTIONS,
+  onModelLoading,
+  preloadVoice,
+  speakFeedback,
+  speakLetter,
+  speakSpellingPrompt,
+  speakWord,
+  type ModelLoadingState,
+  type VoiceChoice,
+} from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
@@ -80,6 +90,7 @@ function SpellingQuest() {
   const [finished, setFinished] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [voice, setVoice] = useState<VoiceChoice>("studio-indian-female");
+  const [modelLoading, setModelLoading] = useState<ModelLoadingState>({ loading: false });
   const [hint, setHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [hintError, setHintError] = useState(false);
@@ -91,6 +102,8 @@ function SpellingQuest() {
 
   const current = session[position];
   const progress = session.length ? Math.min(position + 1, session.length) : 0;
+
+  useEffect(() => onModelLoading((state) => setModelLoading(state)), []);
 
   useEffect(() => {
     if (!validateWordBank()) console.error("Spelling Quest word bank failed validation.");
@@ -293,8 +306,8 @@ function SpellingQuest() {
           </div>
         </div>
         <div className="mt-5 flex justify-center">
-           <Button type="button" onClick={() => current && speakSpellingPrompt(current.word, voice)} className="min-h-14 rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90">
-            <Volume2 aria-hidden="true" className="size-5" /> Hear Again
+           <Button type="button" disabled={modelLoading.loading} onClick={() => current && speakSpellingPrompt(current.word, voice)} className="min-h-14 rounded-full bg-sky px-6 py-3 text-base font-bold text-cream shadow-sm hover:scale-105 hover:bg-sky/90 disabled:opacity-70 disabled:hover:scale-100">
+            {modelLoading.loading ? <><div className="size-4 animate-spin rounded-full border-2 border-cream/30 border-t-cream" /><span>Preparing Voice...</span></> : <><Volume2 aria-hidden="true" className="size-5" /><span>Hear Again</span></>}
           </Button>
         </div>
          <div className="mx-auto mt-3 flex max-w-md flex-col gap-2 text-left sm:mt-4">
@@ -302,6 +315,7 @@ function SpellingQuest() {
            <select id="voice-choice" value={voice} onChange={(event) => { const next = event.target.value as VoiceChoice; setVoice(next); preloadVoice("", next); }} className="min-h-14 rounded-2xl bg-paper px-4 py-3 font-bold text-ink outline-none ring-1 ring-ink/10 focus:ring-4 focus:ring-sky">
              {VOICE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
            </select>
+           {modelLoading.loading && <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-2xl bg-sun/20 px-3.5 py-2.5 text-xs font-bold text-ink shadow-xs"><div className="size-4 animate-spin rounded-full border-2 border-ink/20 border-t-coral" /><span>Downloading voice for offline play...{modelLoading.percent !== undefined ? ` ${modelLoading.percent}%` : ""}</span></div>}
            <p className="text-xs font-semibold text-ink/45">On-device AI voices download once, then play offline. Indian voices appear when your device provides them.</p>
          </div>
         <div className="mx-auto mt-6 grid w-full max-w-[18rem] grid-cols-4 justify-items-center gap-2 sm:mt-7 sm:flex sm:max-w-none sm:justify-center sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>

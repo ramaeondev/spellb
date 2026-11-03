@@ -33,7 +33,7 @@ const STUDIO_FOLDER: Partial<Record<VoiceChoice, string>> = {
 
 /** On-device AI voices run in the browser (WASM); the model downloads once and is stored locally. */
 const WASM_VOICE: Partial<Record<VoiceChoice, string>> = {
-  "wasm-female": "en_GB-alba-medium",
+  "wasm-female": "en_US-lessac-medium",
   "wasm-male": "en_US-ryan-medium",
 };
 const WASM_FALLBACK: Partial<Record<VoiceChoice, VoiceChoice>> = {
@@ -48,6 +48,32 @@ const PHRASE_FILES: Record<string, string> = {
 
 let currentAudio: HTMLAudioElement | null = null;
 const audioCache = new Map<string, HTMLAudioElement>();
+
+export interface ModelLoadingState {
+  loading: boolean;
+  voiceId?: string;
+  percent?: number;
+}
+
+type ModelLoadListener = (state: ModelLoadingState) => void;
+const modelListeners = new Set<ModelLoadListener>();
+
+export function onModelLoading(listener: ModelLoadListener) {
+  modelListeners.add(listener);
+  return () => {
+    modelListeners.delete(listener);
+  };
+}
+
+function notifyModelLoading(state: ModelLoadingState) {
+  for (const listener of modelListeners) {
+    try {
+      listener(state);
+    } catch (error) {
+      console.error("Model loading listener failed.", error);
+    }
+  }
+}
 
 function stopAll() {
   playToken += 1;
@@ -100,6 +126,7 @@ type PiperSession = Awaited<ReturnType<PiperModule["TtsSession"]["create"]>>;
 
 let piperModule: PiperModule | null = null;
 const piperSessions = new Map<string, Promise<PiperSession>>();
+let activeVoiceId: string | null = null;
 /** Incremented whenever playback stops; stale synthesis results are discarded. */
 let playToken = 0;
 
@@ -108,9 +135,36 @@ function getPiperSession(voiceId: string): Promise<PiperSession> {
   if (!entry) {
     entry = (async () => {
       if (!piperModule) piperModule = await import("@jtsage/piper-tts-web");
-      return piperModule.TtsSession.create({ voiceId });
+      if (activeVoiceId && activeVoiceId !== voiceId && piperModule.TtsSession._instance) {
+        piperModule.TtsSession._instance = null;
+      }
+      activeVoiceId = voiceId;
+
+      notifyModelLoading({ loading: true, voiceId, percent: 0 });
+
+      const fileReader = new piperModule.CachedFileReader({
+        progress: (progress) => {
+          const percent =
+            progress.total > 0
+              ? Math.min(100, Math.round((progress.loaded / progress.total) * 100))
+              : undefined;
+          notifyModelLoading({ loading: true, voiceId, percent });
+        },
+      });
+
+      try {
+        const session = await piperModule.TtsSession.create({ voiceId, fileReader });
+        notifyModelLoading({ loading: false, voiceId, percent: 100 });
+        return session;
+      } catch (error) {
+        notifyModelLoading({ loading: false, voiceId });
+        throw error;
+      }
     })();
-    entry.catch(() => piperSessions.delete(voiceId));
+    entry.catch(() => {
+      piperSessions.delete(voiceId);
+      notifyModelLoading({ loading: false, voiceId });
+    });
     piperSessions.set(voiceId, entry);
   }
   return entry;
@@ -129,6 +183,7 @@ async function playWasm(text: string, voiceId: string, fallback: () => void) {
     if (token !== playToken) return;
     const url = URL.createObjectURL(wav);
     const audio = new Audio(url);
+    if (voiceId.includes("lessac")) audio.playbackRate = 1.08;
     audio.onended = () => {
       URL.revokeObjectURL(url);
       if (currentAudio === audio) currentAudio = null;
@@ -145,19 +200,32 @@ function findVoice(choice: VoiceChoice) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return undefined;
-  if (choice === "default") return voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
+  if (choice === "default")
+    return voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
 
-  const indian = voices.filter((voice) => voice.lang.toLowerCase().replace("_", "-") === "en-in" || /india/i.test(voice.name));
+  const indian = voices.filter(
+    (voice) => voice.lang.toLowerCase().replace("_", "-") === "en-in" || /india/i.test(voice.name),
+  );
   const femaleName = /female|woman|veena|lekha|neerja|geeta|kavya|kalpana|swara|heera/i;
   const maleName = /\bmale\b|\bman\b|rishi|ravi|prabhat|ajay|madhav|hemant/i;
   if (choice === "indian-female") {
-    return indian.find((voice) => femaleName.test(voice.name) && !/\bmale\b/i.test(voice.name)) ?? indian[0];
+    return (
+      indian.find((voice) => femaleName.test(voice.name) && !/\bmale\b/i.test(voice.name)) ??
+      indian[0]
+    );
   }
   if (choice === "indian-male") {
-    return indian.find((voice) => maleName.test(voice.name)) ?? indian.find((voice) => !femaleName.test(voice.name)) ?? indian[0];
+    return (
+      indian.find((voice) => maleName.test(voice.name)) ??
+      indian.find((voice) => !femaleName.test(voice.name)) ??
+      indian[0]
+    );
   }
   const language = choice === "us" ? "en-us" : "en-gb";
-  return voices.find((voice) => voice.lang.toLowerCase() === language) ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
+  return (
+    voices.find((voice) => voice.lang.toLowerCase() === language) ??
+    voices.find((voice) => voice.lang.toLowerCase().startsWith("en"))
+  );
 }
 
 const VOICE_PROFILES: Record<VoiceChoice, { pitch: number; rate: number }> = {
@@ -207,7 +275,10 @@ export function speakWord(word: string, choice: VoiceChoice = "default") {
 export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default") {
   const text = `How do we spell ${word}?`;
   const folder = STUDIO_FOLDER[choice];
-  if (folder) return playStudio(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`, () => speakText(text, choice, true));
+  if (folder)
+    return playStudio(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`, () =>
+      speakText(text, choice, true),
+    );
   if (wasmRoute(text, choice)) return;
   speakText(text, choice, true);
 }
@@ -221,7 +292,10 @@ export function speakLetter(letter: string, choice: VoiceChoice = "default") {
 export function speakFeedback(message: string, choice: VoiceChoice = "default") {
   const folder = STUDIO_FOLDER[choice];
   const phrase = PHRASE_FILES[message];
-  if (folder && phrase) return playStudio(`/audio/${folder}/phrases/${phrase}.mp3`, () => speakText(message, choice, true));
+  if (folder && phrase)
+    return playStudio(`/audio/${folder}/phrases/${phrase}.mp3`, () =>
+      speakText(message, choice, true),
+    );
   if (wasmRoute(message, choice)) return;
   speakText(message, choice, true);
 }
