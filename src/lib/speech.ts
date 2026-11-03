@@ -161,6 +161,8 @@ function findVoice(choice: VoiceChoice) {
 }
 
 const VOICE_PROFILES: Record<VoiceChoice, { pitch: number; rate: number }> = {
+  "studio-indian-female": { pitch: 1.12, rate: 0.82 },
+  "studio-indian-male": { pitch: 0.91, rate: 0.8 },
   default: { pitch: 1.05, rate: 0.8 },
   "indian-female": { pitch: 1.12, rate: 0.82 },
   "indian-male": { pitch: 0.91, rate: 0.8 },
