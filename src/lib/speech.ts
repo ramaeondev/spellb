@@ -50,6 +50,7 @@ let currentAudio: HTMLAudioElement | null = null;
 const audioCache = new Map<string, HTMLAudioElement>();
 
 function stopAll() {
+  playToken += 1;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
