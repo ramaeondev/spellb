@@ -189,22 +189,25 @@ function speakText(text: string, requested: VoiceChoice, cancelCurrent: boolean)
   window.speechSynthesis.speak(utterance);
 }
 
-function wasmRoute(text: string, choice: VoiceChoice): ReturnType<typeof playWasm> | undefined {
+function wasmRoute(text: string, choice: VoiceChoice): boolean {
   const voiceId = WASM_VOICE[choice];
-  if (!voiceId) return undefined;
+  if (!voiceId) return false;
   const fallbackChoice = WASM_FALLBACK[choice] ?? "default";
-  return playWasm(text, voiceId, () => speakText(text, fallbackChoice, true));
+  playWasm(text, voiceId, () => speakText(text, fallbackChoice, true));
+  return true;
 }
 
 export function speakWord(word: string, choice: VoiceChoice = "default") {
-  wasmRoute(word, choice) ?? speakText(word, choice, true);
+  if (wasmRoute(word, choice)) return;
+  speakText(word, choice, true);
 }
 
 export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default") {
   const text = `How do we spell ${word}?`;
   const folder = STUDIO_FOLDER[choice];
   if (folder) return playStudio(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`, () => speakText(text, choice, true));
-  wasmRoute(text, choice) ?? speakText(text, choice, true);
+  if (wasmRoute(text, choice)) return;
+  speakText(text, choice, true);
 }
 
 export function speakLetter(letter: string, choice: VoiceChoice = "default") {
@@ -217,5 +220,6 @@ export function speakFeedback(message: string, choice: VoiceChoice = "default") 
   const folder = STUDIO_FOLDER[choice];
   const phrase = PHRASE_FILES[message];
   if (folder && phrase) return playStudio(`/audio/${folder}/phrases/${phrase}.mp3`, () => speakText(message, choice, true));
-  wasmRoute(message, choice) ?? speakText(message, choice, true);
+  if (wasmRoute(message, choice)) return;
+  speakText(message, choice, true);
 }
