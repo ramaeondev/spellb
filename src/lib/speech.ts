@@ -164,13 +164,15 @@ const VOICE_PROFILES: Record<VoiceChoice, { pitch: number; rate: number }> = {
   default: { pitch: 1.05, rate: 0.8 },
   "indian-female": { pitch: 1.12, rate: 0.82 },
   "indian-male": { pitch: 0.91, rate: 0.8 },
+  "wasm-female": { pitch: 1.0, rate: 0.85 },
+  "wasm-male": { pitch: 1.0, rate: 0.85 },
   us: { pitch: 1.05, rate: 0.8 },
   uk: { pitch: 1.05, rate: 0.8 },
 };
 
 function speakText(text: string, requested: VoiceChoice, cancelCurrent: boolean) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const choice = STUDIO_FALLBACK[requested] ?? requested;
+  const choice = STUDIO_FALLBACK[requested] ?? WASM_FALLBACK[requested] ?? requested;
   if (cancelCurrent) stopAll();
   const utterance = new SpeechSynthesisUtterance(text);
   const voice = findVoice(choice);
