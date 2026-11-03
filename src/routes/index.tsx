@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Lightbulb, LoaderCircle, SkipForward, Volume2 } 
 import { Button } from "@/components/ui/button";
 import { STAGE_WORDS, type WordEntry, type WordStage, validateWordBank } from "@/data/words";
 import { WORD_TIPS } from "@/data/word-tips";
-import { VOICE_OPTIONS, preloadStudioPrompt, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
+import { VOICE_OPTIONS, preloadVoice, speakFeedback, speakLetter, speakSpellingPrompt, speakWord, type VoiceChoice } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
@@ -111,7 +111,7 @@ function SpellingQuest() {
       inputRefs.current[0]?.focus();
       speakSpellingPrompt(current.word, voice);
       const upcoming = session[position + 1];
-      if (upcoming) preloadStudioPrompt(upcoming.word, voice);
+      if (upcoming) preloadVoice(upcoming.word, voice);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [current, finished]);
@@ -299,10 +299,10 @@ function SpellingQuest() {
         </div>
          <div className="mx-auto mt-3 flex max-w-md flex-col gap-2 text-left sm:mt-4">
            <label htmlFor="voice-choice" className="text-xs font-extrabold uppercase tracking-[0.12em] text-ink/50">Listening voice</label>
-           <select id="voice-choice" value={voice} onChange={(event) => setVoice(event.target.value as VoiceChoice)} className="min-h-14 rounded-2xl bg-paper px-4 py-3 font-bold text-ink outline-none ring-1 ring-ink/10 focus:ring-4 focus:ring-sky">
+           <select id="voice-choice" value={voice} onChange={(event) => { const next = event.target.value as VoiceChoice; setVoice(next); preloadVoice("", next); }} className="min-h-14 rounded-2xl bg-paper px-4 py-3 font-bold text-ink outline-none ring-1 ring-ink/10 focus:ring-4 focus:ring-sky">
              {VOICE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
            </select>
-           <p className="text-xs font-semibold text-ink/45">Indian voices appear when your device provides them.</p>
+           <p className="text-xs font-semibold text-ink/45">On-device AI voices download once, then play offline. Indian voices appear when your device provides them.</p>
          </div>
         <div className="mx-auto mt-6 grid w-full max-w-[18rem] grid-cols-4 justify-items-center gap-2 sm:mt-7 sm:flex sm:max-w-none sm:justify-center sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
           {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className={`size-16 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
