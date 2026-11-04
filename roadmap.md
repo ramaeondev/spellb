@@ -4,3 +4,5 @@
 - [x] Verify the preview and central reveal rule
 - [x] Add voice choices, skip control, session validation, and Stage 7 random mix
 - [x] Add an AI-powered, non-revealing hint after incorrect attempts
+
+- [ ] Phonics board section (plan in .lovable/phonics-plan.md, next session)
