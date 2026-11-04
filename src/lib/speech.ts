@@ -52,7 +52,7 @@ const audioCache = new Map<string, HTMLAudioElement>();
 export interface ModelLoadingState {
   loading: boolean;
   voiceId?: string;
-  percent?: number;
+  percent?: number | undefined;
 }
 
 type ModelLoadListener = (state: ModelLoadingState) => void;
