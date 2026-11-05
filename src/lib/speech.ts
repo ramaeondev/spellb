@@ -84,7 +84,7 @@ function stopAll() {
   if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
-function playStudio(path: string, fallback: () => void) {
+function playStudio(path: string, fallback: () => void, onEnded?: () => void) {
   stopAll();
   let audio = audioCache.get(path);
   if (!audio) {
@@ -94,10 +94,31 @@ function playStudio(path: string, fallback: () => void) {
   }
   audio.currentTime = 0;
   currentAudio = audio;
+  audio.onended = () => {
+    if (currentAudio === audio) currentAudio = null;
+    onEnded?.();
+  };
   audio.play().catch(() => {
     audioCache.delete(path);
     fallback();
   });
+}
+
+/** Phonics tiles: play the pure sound recording, then the sample word. */
+export function playPhonics(id: string, soundText: string, word: string, choice: VoiceChoice = "default") {
+  const folder = STUDIO_FOLDER[choice];
+  if (!folder) {
+    stopAll();
+    speakText(soundText, choice, false);
+    speakText(word, choice, false);
+    return;
+  }
+  playStudio(
+    `/audio/${folder}/phonics/${id}.mp3`,
+    () => speakText(`${soundText} ${word}`, choice, true),
+    () =>
+      playStudio(`/audio/${folder}/phonics/${id}-word.mp3`, () => speakText(word, choice, true)),
+  );
 }
 
 /** Warm the cache so the next prompt plays with no delay. */
