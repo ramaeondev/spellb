@@ -134,6 +134,9 @@ function PhonicsBoard() {
           </div>
         </div>
       )}
+      <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-muted-foreground">
+        Letter sounds from Open Letter Sounds (CC0). Some speech sounds from Wikimedia Commons IPA recordings (CC BY-SA).
+      </p>
     </main>
   );
 }

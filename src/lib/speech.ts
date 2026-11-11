@@ -105,6 +105,9 @@ function playStudio(path: string, fallback: () => void, onEnded?: () => void) {
 }
 
 /** Phonics tiles: play the pure sound recording, then the sample word. */
+/** Sounds with a natural open-licensed recording (CC0 Open Letter Sounds + Wikimedia IPA clips). */
+const OPEN_PHONICS = new Set<string>(["a","ar","bl","b","br","ch","ck","cl","c","cr","d","dr","ee","e","er","fl","f","fr","gl","g","gr","h","i","ir","j","k","l","m","ng","n","o","oo","or","ph","pl","p","pr","q","r","sc","sh","sk","sl","sm","s","sn","sp","st","sw","th","t","tr","tw","u","ur","v","wh","w","x","y","z"]);
+
 export function playPhonics(id: string, soundText: string, word: string, choice: VoiceChoice = "default") {
   const folder = STUDIO_FOLDER[choice];
   if (!folder) {
@@ -114,7 +117,7 @@ export function playPhonics(id: string, soundText: string, word: string, choice:
     return;
   }
   playStudio(
-    `/audio/${folder}/phonics/${id}.mp3`,
+    OPEN_PHONICS.has(id) ? `/audio/phonics-open/${id}.mp3` : `/audio/${folder}/phonics/${id}.mp3`,
     () => speakText(`${soundText} ${word}`, choice, true),
     () =>
       playStudio(`/audio/${folder}/phonics/${id}-word.mp3`, () => speakText(word, choice, true)),
