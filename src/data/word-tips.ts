@@ -1999,5 +1999,45 @@ export const WORD_TIPS: Record<string, [string, string]> = {
  "orchard": [
   "A place where rows of fruit trees grow.",
   "Farmers pick apples or peaches from trees here."
+ ],
+ "elephant": [
+  "A huge animal with a long trunk and big ears.",
+  "It can spray water using the long nose on its face."
+ ],
+ "snake": [
+  "A long, legless reptile that slithers.",
+  "Some of these reptiles hiss and flick out a forked tongue."
+ ],
+ "crocodile": [
+  "A large reptile with a long tail and powerful jaws.",
+  "It lives near rivers and has lots of sharp teeth."
+ ],
+ "gorilla": [
+  "A strong great ape with dark fur.",
+  "This large ape lives in forests and moves on its knuckles."
+ ],
+ "kangaroo": [
+  "An Australian animal that hops and carries its baby in a pouch.",
+  "It has powerful back legs and a long balancing tail."
+ ],
+ "cheetah": [
+  "A spotted big cat known for running very fast.",
+  "This speedy hunter has black tear marks beneath its eyes."
+ ],
+ "flamingo": [
+  "A tall pink bird that often stands on one leg.",
+  "It has a bent beak and long, thin legs."
+ ],
+ "raccoon": [
+  "A furry animal with a dark mask around its eyes.",
+  "It has a ringed tail and often searches for food at night."
+ ],
+ "rhinoceros": [
+  "A large animal with thick skin and one or two horns.",
+  "Its name starts with the same sound as rain."
+ ],
+ "hippopotamus": [
+  "A huge river animal with a very wide mouth.",
+  "This animal spends much of the day in water to stay cool."
  ]
 };

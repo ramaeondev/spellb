@@ -6,3 +6,4 @@
 - [x] Add an AI-powered, non-revealing hint after incorrect attempts
 
 - [x] Phonics board section (plan in .lovable/phonics-plan.md, next session)
+- [x] Add a 100-word Famous Animals stage and its clue images

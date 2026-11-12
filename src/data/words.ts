@@ -1,4 +1,4 @@
-export type WordStage = 1 | 2 | 3 | 4 | 5 | 7;
+export type WordStage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type WordEntry = { id: string; word: string; stage: WordStage; category: string; image: string; };
 
 export const WORDS: WordEntry[] = [
@@ -510,6 +510,7 @@ export const STAGE_WORDS = {
   3: WORDS.filter((entry) => entry.stage === 3),
   4: WORDS.filter((entry) => entry.stage === 4),
   5: WORDS.filter((entry) => entry.stage === 5),
+  6: [],
   7: WORDS,
 } satisfies Record<WordStage, WordEntry[]>;
 
