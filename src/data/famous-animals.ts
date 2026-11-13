@@ -1,4 +1,4 @@
-import { WORDS, type WordEntry } from "@/data/words";
+import { STAGE_WORDS, type WordEntry } from "@/data/words";
 
 const EXTRA_FAMOUS_ANIMALS = [
   "elephant",
@@ -14,7 +14,7 @@ const EXTRA_FAMOUS_ANIMALS = [
 ] as const;
 
 export const FAMOUS_ANIMAL_WORDS: WordEntry[] = [
-  ...WORDS.filter((entry) => entry.category === "animals").map((entry) => ({ ...entry, stage: 6 as const })),
+  ...STAGE_WORDS[6],
   ...EXTRA_FAMOUS_ANIMALS.map((word) => ({
     id: word,
     word,

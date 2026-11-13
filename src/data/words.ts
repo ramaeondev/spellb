@@ -510,7 +510,7 @@ export const STAGE_WORDS = {
   3: WORDS.filter((entry) => entry.stage === 3),
   4: WORDS.filter((entry) => entry.stage === 4),
   5: WORDS.filter((entry) => entry.stage === 5),
-  6: [],
+  6: WORDS.filter((entry) => entry.category === "animals").map((entry) => ({ ...entry, stage: 6 as const })),
   7: WORDS,
 } satisfies Record<WordStage, WordEntry[]>;
 
