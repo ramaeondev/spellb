@@ -40,7 +40,7 @@ export function SiteFooter() {
             Licensed under the{" "}
             <button type="button" onClick={() => setShowLicense(true)} className="font-bold text-sky underline-offset-2 hover:underline">MIT License</button>
             {" · "}
-            <a href="https://github.com/ramaeon/spellb" target="_blank" rel="noopener noreferrer" className="font-bold text-sky underline-offset-2 hover:underline">Source on GitHub</a>
+            <a href="https://github.com/ramaeondev/spellb" target="_blank" rel="noopener noreferrer" className="font-bold text-sky underline-offset-2 hover:underline">Source on GitHub</a>
           </p>
         </div>
         <SocialLinks />
