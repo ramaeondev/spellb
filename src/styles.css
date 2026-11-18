@@ -153,6 +153,12 @@
     border-color: var(--color-border);
   }
 
+  /* Tailwind v4's preflight gives buttons `cursor: default`; restore the hand
+     cursor for enabled, clickable controls (stage tiles, phonics tiles, etc). */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
