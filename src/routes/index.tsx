@@ -18,6 +18,7 @@ import {
   type VoiceChoice,
 } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
+import { asset } from "@/lib/assets";
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
 type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
@@ -259,7 +260,7 @@ function SpellingQuest() {
     }
     setHintLoading(true);
     try {
-      const imageResponse = await fetch(current.image);
+      const imageResponse = await fetch(asset(current.image));
       if (!imageResponse.ok) throw new Error("Picture unavailable");
       const imageBlob = await imageResponse.blob();
       const imageData = await imageBlobToPngDataUrl(imageBlob);
@@ -305,7 +306,7 @@ function SpellingQuest() {
         </div>
         <div className="mt-5 grid place-items-center sm:mt-7">
           <div className="relative aspect-[4/3] w-full max-w-sm overflow-hidden rounded-[20px] bg-paper ring-1 ring-ink/5 sm:max-w-md sm:rounded-[24px]">
-            {imageFailed ? <div className="grid h-full place-items-center text-7xl" aria-label="A friendly picture">{current?.category === "animals" ? "🐾" : "⭐"}</div> : <img src={current?.image} alt="A picture clue for the spelling word" className="h-full w-full object-cover" onError={() => setImageFailed(true)} />}
+            {imageFailed ? <div className="grid h-full place-items-center text-7xl" aria-label="A friendly picture">{current?.category === "animals" ? "🐾" : "⭐"}</div> : <img src={current ? asset(current.image) : undefined} alt="A picture clue for the spelling word" className="h-full w-full object-cover" onError={() => setImageFailed(true)} />}
           </div>
         </div>
         <div className="mt-5 flex justify-center">

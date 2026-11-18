@@ -10,6 +10,7 @@ import {
   type PhonicsGroup,
 } from "@/data/phonics";
 import { playPhonics, type VoiceChoice } from "@/lib/speech";
+import { asset } from "@/lib/assets";
 
 export const Route = createFileRoute("/phonics")({
   head: () => ({
@@ -109,7 +110,7 @@ function PhonicsBoard() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="relative mx-auto aspect-[4/3] w-full max-w-xs overflow-hidden rounded-[20px] bg-paper ring-1 ring-ink/5">
-              <img src={active.image} alt={`A picture of ${active.word}`} className="h-full w-full object-cover" loading="lazy" />
+              <img src={asset(active.image)} alt={`A picture of ${active.word}`} className="h-full w-full object-cover" loading="lazy" />
             </div>
             <p className="mt-4 font-display text-6xl font-extrabold text-ink">{active.display}</p>
             <p className="mt-1 text-base font-bold text-ink/50">

@@ -1,3 +1,5 @@
+import { asset } from "@/lib/assets";
+
 export type VoiceChoice =
   | "studio-indian-female"
   | "studio-indian-male"
@@ -117,10 +119,10 @@ export function playPhonics(id: string, soundText: string, word: string, choice:
     return;
   }
   playStudio(
-    OPEN_PHONICS.has(id) ? `/audio/phonics-open/${id}.mp3` : `/audio/${folder}/phonics/${id}.mp3`,
+    asset(OPEN_PHONICS.has(id) ? `/audio/phonics-open/${id}.mp3` : `/audio/${folder}/phonics/${id}.mp3`),
     () => speakText(`${soundText} ${word}`, choice, true),
     () =>
-      playStudio(`/audio/${folder}/phonics/${id}-word.mp3`, () => speakText(word, choice, true)),
+      playStudio(asset(`/audio/${folder}/phonics/${id}-word.mp3`), () => speakText(word, choice, true)),
   );
 }
 
@@ -128,7 +130,7 @@ export function playPhonics(id: string, soundText: string, word: string, choice:
 export function preloadStudioPrompt(word: string, choice: VoiceChoice) {
   const folder = STUDIO_FOLDER[choice];
   if (!folder || typeof window === "undefined") return;
-  const path = `/audio/${folder}/prompt/${word.toLowerCase()}.mp3`;
+  const path = asset(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`);
   if (audioCache.has(path)) return;
   const audio = new Audio(path);
   audio.preload = "auto";
@@ -300,7 +302,7 @@ export function speakSpellingPrompt(word: string, choice: VoiceChoice = "default
   const text = `How do we spell ${word}?`;
   const folder = STUDIO_FOLDER[choice];
   if (folder)
-    return playStudio(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`, () =>
+    return playStudio(asset(`/audio/${folder}/prompt/${word.toLowerCase()}.mp3`), () =>
       speakText(text, choice, true),
     );
   if (wasmRoute(text, choice)) return;
@@ -317,7 +319,7 @@ export function speakFeedback(message: string, choice: VoiceChoice = "default") 
   const folder = STUDIO_FOLDER[choice];
   const phrase = PHRASE_FILES[message];
   if (folder && phrase)
-    return playStudio(`/audio/${folder}/phrases/${phrase}.mp3`, () =>
+    return playStudio(asset(`/audio/${folder}/phrases/${phrase}.mp3`), () =>
       speakText(message, choice, true),
     );
   if (wasmRoute(message, choice)) return;
