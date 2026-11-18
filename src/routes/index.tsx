@@ -14,11 +14,20 @@ import {
   speakLetter,
   speakSpellingPrompt,
   speakWord,
+  stopAllAudio,
   type ModelLoadingState,
   type VoiceChoice,
 } from "@/lib/speech";
 import { requestSpellingHint } from "@/lib/hint.functions";
 import { asset } from "@/lib/assets";
+
+export const GAME_TIMINGS = {
+  validation: 180,
+  wrongAnswerFeedback: 450,
+  successAutoAdvance: 1200,
+  newWordAudioDelay: 200,
+  skipTransition: 250,
+} as const;
 import { recordValidationEvent, startValidationSession } from "@/lib/session-tracking";
 
 type Feedback = "idle" | "wrong" | "correct" | "revealed" | "skipped";
@@ -101,6 +110,22 @@ function SpellingQuest() {
   const validationSessionId = useRef<string | undefined>(undefined);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const getHint = useServerFn(requestSpellingHint);
+  const [wrongIndex, setWrongIndex] = useState<number | null>(null);
+  const validationTimer = useRef<number | undefined>(undefined);
+  const wrongTimer = useRef<number | undefined>(undefined);
+  const advanceTimer = useRef<number | undefined>(undefined);
+  const audioTimer = useRef<number | undefined>(undefined);
+  // Position we already advanced from; stale handlers from that word can't move again.
+  const advancedFrom = useRef(-1);
+
+  function clearTimers() {
+    for (const ref of [validationTimer, wrongTimer, advanceTimer, audioTimer]) {
+      window.clearTimeout(ref.current);
+      ref.current = undefined;
+    }
+  }
+
+  useEffect(() => () => clearTimers(), []);
 
   const current = session[position];
   const progress = session.length ? Math.min(position + 1, session.length) : 0;
@@ -122,18 +147,24 @@ function SpellingQuest() {
     setHintLoading(false);
     setHintError(false);
     setHasMistake(false);
-    const timer = window.setTimeout(() => {
+    setWrongIndex(null);
+    clearTimers();
+    stopAllAudio();
+    audioTimer.current = window.setTimeout(() => {
       inputRefs.current[0]?.focus();
       speakSpellingPrompt(current.word, voice);
       const upcoming = session[position + 1];
       if (upcoming) preloadVoice(upcoming.word, voice);
-    }, 260);
-    return () => window.clearTimeout(timer);
+    }, GAME_TIMINGS.newWordAudioDelay);
+    return () => window.clearTimeout(audioTimer.current);
   }, [current, finished]);
 
   const totalStars = useMemo(() => "★".repeat(Math.min(3, lastStars)) + "☆".repeat(3 - Math.min(3, lastStars)), [lastStars]);
 
   function startStage(nextStage: WordStage) {
+    clearTimers();
+    stopAllAudio();
+    advancedFrom.current = -1;
     setStage(nextStage);
     const words = nextStage === 6
       ? shuffle(FAMOUS_ANIMAL_WORDS)
@@ -151,7 +182,8 @@ function SpellingQuest() {
   }
 
   function goHome() {
-    window.speechSynthesis?.cancel();
+    clearTimers();
+    stopAllAudio();
     setStage(null);
     setSession([]);
     setFinished(false);
@@ -181,15 +213,18 @@ function SpellingQuest() {
         speakFeedback("Oops! Let's learn this one.", voice);
       } else {
         setFeedback("wrong");
+        setWrongIndex(index);
         setHasMistake(true);
         setHint(null);
         setHintError(false);
         speakFeedback("Oops! Try again.", voice);
-        window.setTimeout(() => {
+        window.clearTimeout(wrongTimer.current);
+        wrongTimer.current = window.setTimeout(() => {
+          setWrongIndex(null);
           setLetters((currentLetters) => currentLetters.map((letter, letterIndex) => letterIndex === index && letter === next ? "" : letter));
           setFeedback("idle");
           inputRefs.current[index]?.focus();
-        }, 850);
+        }, GAME_TIMINGS.wrongAnswerFeedback);
       }
       return;
     }
@@ -198,7 +233,10 @@ function SpellingQuest() {
     setLetters(nextLetters);
     speakLetter(next, voice);
     if (next && index < nextLetters.length - 1) inputRefs.current[index + 1]?.focus();
-    if (nextLetters.every(Boolean)) window.setTimeout(() => checkAnswer(nextLetters), 450);
+    if (nextLetters.every(Boolean)) {
+      window.clearTimeout(validationTimer.current);
+      validationTimer.current = window.setTimeout(() => checkAnswer(nextLetters), GAME_TIMINGS.validation);
+    }
   }
 
   function handleKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
@@ -228,8 +266,34 @@ function SpellingQuest() {
     setHasMistake(false);
     recordValidationEvent(validationSessionId.current ?? "", current.id, "answered");
     speakFeedback("Good! Correct!", voice);
-    window.setTimeout(advance, 1400);
+    window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = window.setTimeout(advanceOnce, GAME_TIMINGS.successAutoAdvance);
   }
+
+  // Single entry point for leaving a finished word: guarantees exactly one transition.
+  function advanceOnce() {
+    if (advancedFrom.current === position) return;
+    advancedFrom.current = position;
+    clearTimers();
+    advance();
+  }
+
+  function advanceNow() {
+    if (advancedFrom.current === position) return;
+    stopAllAudio();
+    advanceOnce();
+  }
+
+  useEffect(() => {
+    if (feedback !== "correct") return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      advanceNow();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [feedback]);
 
   function advance() {
     if (position >= session.length - 1) {
@@ -242,9 +306,10 @@ function SpellingQuest() {
   function skipWord() {
     if (!current || feedback !== "idle") return;
     recordValidationEvent(validationSessionId.current ?? "", current.id, "skipped");
-    window.speechSynthesis?.cancel();
+    stopAllAudio();
     setFeedback("skipped");
-    window.setTimeout(advance, 500);
+    window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = window.setTimeout(advanceOnce, GAME_TIMINGS.skipTransition);
   }
 
   async function requestHint() {
@@ -323,7 +388,7 @@ function SpellingQuest() {
            <p className="text-xs font-semibold text-ink/45">On-device AI voices download once, then play offline. Indian voices appear when your device provides them.</p>
          </div>
         <div className="mx-auto mt-6 grid w-full max-w-[18rem] grid-cols-4 justify-items-center gap-2 sm:mt-7 sm:flex sm:max-w-none sm:justify-center sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
-          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} disabled={feedback === "revealed"} onKeyDown={(event) => handleKeyDown(index, event)} className={`size-16 disabled:opacity-40 disabled:blur-[1px] rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
+          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} disabled={feedback === "revealed"} onKeyDown={(event) => handleKeyDown(index, event)} className={`${feedback === "wrong" && index === wrongIndex ? "quest-shake " : ""}size-16 disabled:opacity-40 disabled:blur-[1px] rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
         </div>
          <div className="mt-5 flex justify-center">
            <Button type="button" variant="ghost" onClick={skipWord} className="min-h-12 rounded-full bg-paper px-5 py-2.5 font-bold text-ink/65 ring-1 ring-ink/10 hover:bg-paper-strong hover:text-ink">
@@ -332,8 +397,8 @@ function SpellingQuest() {
          </div>
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> OOPS! TRY AGAIN</div>}
-          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
-          {feedback === "revealed" && current && <CorrectionDialog typed={letters} word={current.word} onNext={advance} />}
+          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /><Button type="button" onClick={advanceNow} className="min-h-12 rounded-full bg-sky px-6 py-2.5 font-bold text-cream hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-4" /></Button><p className="text-xs font-semibold text-ink/45">Press Enter to continue</p></>}
+          {feedback === "revealed" && current && <CorrectionDialog typed={letters} word={current.word} onNext={advanceNow} />}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
           {(hasMistake || hint || hintLoading || hintError) && <div className="flex flex-col items-center gap-2">
             {hint && <p className="max-w-md rounded-2xl bg-sun/20 px-4 py-2 text-center text-base font-extrabold text-ink" role="status"><span aria-hidden="true">💡</span> {hint}</p>}

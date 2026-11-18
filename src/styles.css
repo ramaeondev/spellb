@@ -193,3 +193,15 @@
     radial-gradient(120% 120% at 50% 118%, color-mix(in oklab, var(--color-coral) 24%, transparent) 0%, transparent 55%),
     var(--color-paper);
 }
+
+@keyframes quest-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+.quest-shake {
+  animation: quest-shake 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-shake { animation: none; }
+}
