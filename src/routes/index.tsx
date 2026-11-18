@@ -322,7 +322,7 @@ function SpellingQuest() {
            <p className="text-xs font-semibold text-ink/45">On-device AI voices download once, then play offline. Indian voices appear when your device provides them.</p>
          </div>
         <div className="mx-auto mt-6 grid w-full max-w-[18rem] grid-cols-4 justify-items-center gap-2 sm:mt-7 sm:flex sm:max-w-none sm:justify-center sm:gap-3" role="group" aria-label={`Spell the word, ${current?.word.length ?? 0} letters`}>
-          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} onKeyDown={(event) => handleKeyDown(index, event)} className={`size-16 rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
+          {letters.map((letter, index) => <input key={`${current?.id}-${index}`} ref={(element) => { inputRefs.current[index] = element; }} value={letter} maxLength={1} inputMode="text" autoCapitalize="characters" aria-label={`Letter ${index + 1}`} aria-invalid={feedback === "wrong" && letter !== current?.word[index]?.toUpperCase()} onChange={(event) => updateLetter(index, event.target.value)} disabled={feedback === "revealed"} onKeyDown={(event) => handleKeyDown(index, event)} className={`size-16 disabled:opacity-40 disabled:blur-[1px] rounded-2xl bg-paper text-center font-display text-3xl font-extrabold text-ink outline-none ring-2 transition focus:ring-4 ${feedback === "wrong" && letter !== current?.word[index]?.toUpperCase() ? "ring-coral focus:ring-coral" : "ring-sky/70 focus:ring-sky"}`} />)}
         </div>
          <div className="mt-5 flex justify-center">
            <Button type="button" variant="ghost" onClick={skipWord} className="min-h-12 rounded-full bg-paper px-5 py-2.5 font-bold text-ink/65 ring-1 ring-ink/10 hover:bg-paper-strong hover:text-ink">
@@ -332,7 +332,7 @@ function SpellingQuest() {
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> OOPS! TRY AGAIN</div>}
           {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /></>}
-          {feedback === "revealed" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> LET'S LEARN IT!</div><RevealWord word={current.word} stars="☆☆☆" /><Button type="button" onClick={advance} className="min-h-14 rounded-full bg-sky px-7 py-3 text-base font-bold text-cream hover:scale-105 hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-5" /></Button></>}
+          {feedback === "revealed" && current && <CorrectionDialog typed={letters} word={current.word} onNext={advance} />}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
           {(hasMistake || hint || hintLoading || hintError) && <div className="flex flex-col items-center gap-2">
             {hint && <p className="max-w-md rounded-2xl bg-sun/20 px-4 py-2 text-center text-base font-extrabold text-ink" role="status"><span aria-hidden="true">💡</span> {hint}</p>}
@@ -346,6 +346,30 @@ function SpellingQuest() {
          <p className="mt-3 text-center text-sm font-bold text-ink/45">{feedback === "idle" ? "How do we spell it?" : feedback === "wrong" ? "That letter didn't match. Try this spot again." : feedback === "skipped" ? "No problem—let’s try a new one." : "Great learning!"}</p>
       </section>
     </main>
+  );
+}
+
+function CorrectionDialog({ typed, word, onNext }: { typed: string[]; word: string; onNext: () => void }) {
+  const target = word.toUpperCase().split("");
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center bg-ink/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="correction-title">
+      <div className="quest-pop w-full max-w-md rounded-[28px] bg-cream p-5 text-center shadow-xl sm:p-7">
+        <p id="correction-title" className="font-display text-2xl font-extrabold text-coral">Let's learn it!</p>
+        <div className="mt-4 grid gap-3">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-ink/50">You typed</p>
+            <div className="mt-1 flex flex-wrap justify-center gap-1">{target.map((letter, i) => { const t = typed[i] || "_"; const ok = t === letter; return <span key={i} className={`grid size-9 place-items-center rounded-lg font-display text-lg font-extrabold ${ok ? "bg-paper text-ink/70" : "bg-coral/15 text-coral line-through"}`}>{t}</span>; })}</div>
+          </div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-ink/50">Correct spelling</p>
+            <div className="mt-1 flex flex-wrap justify-center gap-1">{target.map((letter, i) => <span key={i} className="grid size-9 place-items-center rounded-lg bg-sky font-display text-lg font-extrabold text-cream">{letter}</span>)}</div>
+            <p className="mt-2 text-base font-bold text-ink/70">{word}</p>
+          </div>
+        </div>
+        <Button type="button" autoFocus onClick={onNext} className="mt-5 min-h-14 w-full rounded-full bg-sky px-7 py-3 text-base font-bold text-cream hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-5" /></Button>
+        <p className="mt-2 text-xs font-semibold text-ink/45">Press Enter to continue</p>
+      </div>
+    </div>
   );
 }
 

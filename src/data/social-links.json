@@ -1,0 +1,30 @@
+[
+    {
+        "id": "692ea9710039fcf0e446",
+        "platform": "github",
+        "url": "https://github.com/ramaeon",
+        "display_name": "GitHub",
+        "created_at": "2025-12-02T08:55:14.137+00:00"
+    },
+    {
+        "id": "692ea9720016bd324896",
+        "platform": "twitter",
+        "url": "https://twitter.com/ramaeon",
+        "display_name": "Twitter",
+        "created_at": "2025-12-02T08:55:14.567+00:00"
+    },
+    {
+        "id": "692ea9720036b240c88d",
+        "platform": "linkedin",
+        "url": "https://www.linkedin.com/in/ramaeon/",
+        "display_name": "LinkedIn",
+        "created_at": "2025-12-02T08:55:15.067+00:00"
+    },
+    {
+        "id": "692ea9730018560f8510",
+        "platform": "npm",
+        "url": "https://www.npmjs.com/~ramaeon",
+        "display_name": "npm",
+        "created_at": "2025-12-02T08:55:15.58+00:00"
+    }
+]
