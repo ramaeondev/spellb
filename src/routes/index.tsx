@@ -268,6 +268,8 @@ function SpellingQuest() {
     speakFeedback("Good! Correct!", voice);
     window.clearTimeout(advanceTimer.current);
     advanceTimer.current = window.setTimeout(advanceOnce, GAME_TIMINGS.successAutoAdvance);
+    // On small screens the celebration sits below the fold; bring Next Word into view.
+    requestAnimationFrame(() => document.getElementById("success-next")?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
 
   // Single entry point for leaving a finished word: guarantees exactly one transition.
@@ -275,6 +277,8 @@ function SpellingQuest() {
     if (advancedFrom.current === position) return;
     advancedFrom.current = position;
     clearTimers();
+    // Drop the finished word's state in the same render so its dialog/listener can't fire for the next word.
+    setFeedback("idle");
     advance();
   }
 
@@ -397,7 +401,7 @@ function SpellingQuest() {
          </div>
         <div className="mt-6 flex min-h-28 flex-col items-center justify-center gap-3" aria-live="polite">
           {feedback === "wrong" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">✕</span> OOPS! TRY AGAIN</div>}
-          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /><Button type="button" onClick={advanceNow} className="min-h-12 rounded-full bg-sky px-6 py-2.5 font-bold text-cream hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-4" /></Button><p className="text-xs font-semibold text-ink/45">Press Enter to continue</p></>}
+          {feedback === "correct" && <><div className="quest-pop inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-display text-2xl font-extrabold text-cream"><span aria-hidden="true">🎉</span> GOOD! CORRECT!</div><RevealWord word={current.word} stars={totalStars} /><Button id="success-next" type="button" onClick={advanceNow} className="min-h-12 rounded-full bg-sky px-6 py-2.5 font-bold text-cream hover:bg-sky/90">Next Word <ArrowRight aria-hidden="true" className="size-4" /></Button><p className="text-xs font-semibold text-ink/45">Press Enter to continue</p></>}
           {feedback === "revealed" && current && <CorrectionDialog typed={letters} word={current.word} onNext={advanceNow} />}
            {feedback === "skipped" && <div className="quest-pop inline-flex items-center gap-2 rounded-full bg-sky px-6 py-3 font-display text-2xl font-extrabold text-cream"><SkipForward aria-hidden="true" className="size-6" /> SKIPPED</div>}
           {(hasMistake || hint || hintLoading || hintError) && <div className="flex flex-col items-center gap-2">
